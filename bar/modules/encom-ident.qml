@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Io
 import Quickshell
 
 // ENCOM OS-12 system ident: the identity-disc sigil plus the wordmark.
@@ -11,8 +12,22 @@ Item {
   property string moduleName: "encom.ident"
   property var settings: ({})
 
-  readonly property color cyan:   "#6fc3df"
-  readonly property color cyanHi: "#a8ecff"
+  // ── Theme palette ───────────────────────────────────────────────────────
+  // The current Omarchy theme's encom.json, so a theme switch recolours the
+  // ENCOM pieces together. Missing or unreadable, the Tron: Legacy colours
+  // below stand in.
+  property var encom: ({})
+  FileView {
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/encom.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: { try { root.encom = JSON.parse(text()) } catch (e) { root.encom = ({}) } }
+    onLoadFailed: root.encom = ({})
+  }
+
+  readonly property color cyan:   encom.accent || "#6fc3df"
+  readonly property color cyanHi: encom.accentHi || "#a8ecff"
 
   readonly property bool vertical: bar ? bar.vertical === true : false
   readonly property string fontFamily: bar ? bar.fontFamily : "monospace"

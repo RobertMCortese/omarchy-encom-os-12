@@ -131,7 +131,9 @@ remove "$HOME/.local/share/icons/Encom-Cyan"
 remove "$HOME/.local/share/encom-boardroom"
 remove "$HOME/.local/share/encom-lightcycles"
 remove "$HOME/.cache/encom-boardroom"
-remove "$OMA/themes/encom-os-12"
+for t in "$OMA"/themes/encom-*/; do
+  [[ -d $t ]] && remove "${t%/}"
+done
 
 run hyprctl reload >/dev/null
 run omarchy restart shell >/dev/null 2>&1 || true

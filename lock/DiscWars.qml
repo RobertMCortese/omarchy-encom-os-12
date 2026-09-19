@@ -31,11 +31,16 @@ import "poses.js" as Poses
 Item {
   id: arena
 
-  readonly property color program: "#6fc3df"
-  readonly property color programHi: "#d8f6ff"
-  readonly property color sentinel: "#ff8c21"
-  readonly property color sentinelHi: "#ffd9a8"
-  readonly property color ink: "#010306"
+  // The current theme's ENCOM palette (the lock plugin hands it over); the
+  // Tron: Legacy colours stand in when it is empty.
+  property var encomPalette: ({})
+  readonly property color program: encomPalette.sideA || "#6fc3df"
+  readonly property color programHi: encomPalette.sideAHi || "#d8f6ff"
+  readonly property color sentinel: encomPalette.sideB || "#ff8c21"
+  readonly property color sentinelHi: encomPalette.sideBHi || "#ffd9a8"
+  readonly property color ink: encomPalette.ink || "#010306"
+  readonly property color line: encomPalette.accent || "#6fc3df"
+  readonly property color lineHi: encomPalette.accentHi || "#a8ecff"
 
   readonly property real floorY: -3.5          // the arena floor, far below
   readonly property real ceilY: 4.2
@@ -95,14 +100,14 @@ Item {
   // [from, to, opacity, colour, width]
   readonly property var lines: (function () {
     var L = [], X = 16, Z = 5.5, lo = floorY, hi = ceilY
-    for (var x = -X; x <= X; x += 1.5) L.push([[x, lo, -Z], [x, lo, Z], 0.1, "#6fc3df", 1])
-    for (var z = -Z; z <= Z + 0.01; z += 1) L.push([[-X, lo, z], [X, lo, z], 0.1, "#6fc3df", 1])
-    for (var wx = -X; wx <= X; wx += 4) L.push([[wx, lo, -Z], [wx, hi, -Z], 0.1, "#6fc3df", 1])
-    L.push([[-X, 0, -Z], [X, 0, -Z], 0.08, "#6fc3df", 1])
-    for (var cx = -X; cx <= X; cx += 4) L.push([[cx, hi, -Z], [cx, hi, 2], 0.12, "#6fc3df", 1])
-    L.push([[-X, hi, -Z], [X, hi, -Z], 0.45, "#a8ecff", 1])
-    L.push([[-X, lo, -Z], [-X, hi, -Z], 0.45, "#a8ecff", 1])
-    L.push([[X, lo, -Z], [X, hi, -Z], 0.45, "#a8ecff", 1])
+    for (var x = -X; x <= X; x += 1.5) L.push([[x, lo, -Z], [x, lo, Z], 0.1, String(line), 1])
+    for (var z = -Z; z <= Z + 0.01; z += 1) L.push([[-X, lo, z], [X, lo, z], 0.1, String(line), 1])
+    for (var wx = -X; wx <= X; wx += 4) L.push([[wx, lo, -Z], [wx, hi, -Z], 0.1, String(line), 1])
+    L.push([[-X, 0, -Z], [X, 0, -Z], 0.08, String(line), 1])
+    for (var cx = -X; cx <= X; cx += 4) L.push([[cx, hi, -Z], [cx, hi, 2], 0.12, String(line), 1])
+    L.push([[-X, hi, -Z], [X, hi, -Z], 0.45, String(lineHi), 1])
+    L.push([[-X, lo, -Z], [-X, hi, -Z], 0.45, String(lineHi), 1])
+    L.push([[X, lo, -Z], [X, hi, -Z], 0.45, String(lineHi), 1])
     return L
   })()
 

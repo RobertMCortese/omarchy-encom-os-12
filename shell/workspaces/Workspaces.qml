@@ -1,4 +1,6 @@
 import QtQuick
+import Quickshell.Io
+import Quickshell
 import QtQuick.Layouts
 import Quickshell.Hyprland
 import qs.Commons
@@ -14,8 +16,22 @@ BarWidget {
   id: root
   moduleName: "omarchy.workspaces"
 
-  readonly property color encomCyan: "#6fc3df"
-  readonly property color encomCyanHi: "#a8ecff"
+  // ── Theme palette ───────────────────────────────────────────────────────
+  // The current Omarchy theme's encom.json, so a theme switch recolours the
+  // ENCOM pieces together. Missing or unreadable, the Tron: Legacy colours
+  // below stand in.
+  property var encom: ({})
+  FileView {
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/encom.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: { try { root.encom = JSON.parse(text()) } catch (e) { root.encom = ({}) } }
+    onLoadFailed: root.encom = ({})
+  }
+
+  readonly property color encomCyan: encom.accent || "#6fc3df"
+  readonly property color encomCyanHi: encom.accentHi || "#a8ecff"
 
   function workspaceById(id) {
     var values = Hyprland.workspaces.values

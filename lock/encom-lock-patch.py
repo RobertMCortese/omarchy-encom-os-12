@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Show the ENCOM disc wars duel behind the Omarchy lock screen's password field.
+"""Show the ENCOM lock scene behind the Omarchy lock screen's password field.
 
 <user>.lock is a clone of the built-in omarchy.lock (made by the installer).
 This makes one edit to the clone's LockView.qml: a DiscWars item (from
@@ -28,32 +28,58 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.expanduser("~/.config/encom-boardroom/config.json")
 
+# The lock scene: the disc duel, or another the theme asks for (1982 uses
+# the digitiser), with the current theme's palette handed to it.
+SCENE_BLOCK = """    // ENCOM lock scene: the theme's scene, over the wallpaper and under the
+    // password field, in the theme's colours.
+    Loader {
+      id: encomScene
+      anchors.fill: parent
+      property var themePalette: ({})
+      source: themePalette.lockScene === "digitise" ? "Digitize.qml" : "DiscWars.qml"
+      onLoaded: item.encomPalette = Qt.binding(function () { return encomScene.themePalette })
+    }
+
+    FileView {
+      path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/encom.json"
+      watchChanges: true
+      printErrors: false
+      onFileChanged: reload()
+      onLoaded: { try { encomScene.themePalette = JSON.parse(text()) } catch (e) { } }
+      onLoadFailed: encomScene.themePalette = ({})
+    }
+"""
+
+# Where the scene goes: straight after the blurred wallpaper, before the
+# MouseArea, so clicks and the password field keep working as before.
+ANCHOR = """      blurMultiplier: 1.25
+      contrast: -0.08
+    }
+"""
+
 
 def patch_view():
-    """The duel, over the wallpaper and under the password field."""
+    """Put the theme's scene behind the password field."""
     path = os.path.join(HERE, "LockView.qml")
     src = open(path).read()
-    if "// ENCOM disc wars" in src:
+    if "// ENCOM lock scene" in src:
         return "scene: already in"
-    # Straight after the blurred wallpaper, before the MouseArea, so clicks
-    # and the password field keep working exactly as before.
-    old = """      blurMultiplier: 1.25
-      contrast: -0.08
-    }
-"""
-    new = """      blurMultiplier: 1.25
-      contrast: -0.08
-    }
 
-    // ENCOM disc wars: the duel, over the wallpaper and under the field.
-    DiscWars {
-      anchors.fill: parent
-    }
-"""
-    if src.count(old) != 1:
-        sys.exit("wallpaper effect block not found — the upstream lock changed; patch by hand")
-    open(path, "w").write(src.replace(old, new, 1))
-    return "scene: added"
+    # An earlier install: replace whatever was put in with the current block.
+    old = re.search(r"\n    // ENCOM disc wars.*?\n    \}\n(?:\n    FileView \{.*?\n    \}\n)?",
+                    src, re.S)
+    if old:
+        src = src[:old.start()] + "\n" + SCENE_BLOCK + src[old.end():]
+    else:
+        if src.count(ANCHOR) != 1:
+            sys.exit("wallpaper effect block not found — the upstream lock changed; patch by hand")
+        src = src.replace(ANCHOR, ANCHOR + "\n" + SCENE_BLOCK, 1)
+
+    for imp in ("import Quickshell\n", "import Quickshell.Io\n"):
+        if imp not in src:
+            src = src.replace("import QtQuick\n", "import QtQuick\n" + imp, 1)
+    open(path, "w").write(src)
+    return "scene: in" if old else "scene: added"
 
 
 def blank_seconds():

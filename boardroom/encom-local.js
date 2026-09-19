@@ -67,6 +67,63 @@ function encomAlerts() {
 if (document.body) encomAlerts();
 else document.addEventListener("DOMContentLoaded", encomAlerts);
 
+// ── Theme colours ───────────────────────────────────────────────────────
+// The Boardroom is drawn in cyan and amber. The server hands over the
+// current theme's replacements (window.encomColours, from /palette.js); the
+// app's own canvases look theirs up as they draw, and this rewrites the
+// stylesheets once at load, ours included. Without a theme palette the map
+// is empty and nothing changes.
+function encomRecolour() {
+  var map = window.encomColours
+  if (!map || !Object.keys(map).length) return
+  var p = window.encomPalette || {}
+  // Our own stylesheet's ENCOM colours, in the same map.
+  var mine = { "#6fc3df": p.accent, "#a8ecff": p.accentHi, "#cfefff": p.accentHi,
+               "#02141b": p.ink }
+  Object.keys(mine).forEach(function (k) { if (mine[k]) map[k] = mine[k] })
+
+  function hex(r, g, b) {
+    return "#" + [r, g, b].map(function (n) { return ("0" + (+n).toString(16)).slice(-2) }).join("")
+  }
+  function swap(value) {
+    return value
+      .replace(/#[0-9a-fA-F]{6}\b/g, function (m) { return map[m.toLowerCase()] || m })
+      .replace(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g, function (m, r, g, b) {
+        var to = map[hex(r, g, b)]
+        if (!to) return m
+        var c = to.replace("#", "")
+        return m.replace(/\d+\s*,\s*\d+\s*,\s*\d+/,
+                         parseInt(c.slice(0, 2), 16) + "," + parseInt(c.slice(2, 4), 16) + "," +
+                         parseInt(c.slice(4, 6), 16))
+      })
+  }
+  function restyle(rule) {
+    // Nested rules first. Every style rule carries an (often empty) list of
+    // them, so only recurse when there is something in it, and always go on
+    // to the rule's own declarations.
+    if (rule.cssRules && rule.cssRules.length) [].forEach.call(rule.cssRules, restyle)
+    var style = rule.style
+    if (!style) return
+    // Snapshot the property names: setting one can reorder the list.
+    var props = []
+    for (var i = 0; i < style.length; i++) props.push(style[i])
+    props.forEach(function (prop) {
+      var value = style.getPropertyValue(prop), next = swap(value)
+      if (next === value) return
+      // Some rules (inside @keyframes, say) refuse the write; skip those
+      // rather than give up on the rest of the sheet.
+      try { style.setProperty(prop, next, style.getPropertyPriority(prop)) } catch (e) { }
+    })
+  }
+  ;[].forEach.call(document.styleSheets, function (sheet) {
+    var rules
+    try { rules = sheet.cssRules } catch (e) { return }     // not ours to read
+    ;[].forEach.call(rules || [], restyle)
+  })
+}
+if (document.body) encomRecolour();
+else document.addEventListener("DOMContentLoaded", encomRecolour);
+
 // ── Fill the screen's height ────────────────────────────────────────────
 // Upstream lays out a 1900 x 707 design and zooms it to the window's width,
 // which on a 16:9 screen leaves the bottom quarter black. Keeping that same

@@ -16,12 +16,26 @@ Item {
   property var shell
   property var manifest
 
-  readonly property color cyan:    "#6fc3df"
-  readonly property color cyanHi:  "#a8ecff"
-  readonly property color cyanDim: "#1b4d5e"
-  readonly property color orange:  "#ff8c21"
+  // ── Theme palette ───────────────────────────────────────────────────────
+  // The current Omarchy theme's encom.json, so a theme switch recolours the
+  // ENCOM pieces together. Missing or unreadable, the Tron: Legacy colours
+  // below stand in.
+  property var encom: ({})
+  FileView {
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/encom.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: { try { root.encom = JSON.parse(text()) } catch (e) { root.encom = ({}) } }
+    onLoadFailed: root.encom = ({})
+  }
+
+  readonly property color cyan:    encom.accent || "#6fc3df"
+  readonly property color cyanHi:  encom.accentHi || "#a8ecff"
+  readonly property color cyanDim: encom.accentDim || "#1b4d5e"
+  readonly property color orange:  encom.contrast || "#ff8c21"
   // Alerts are ENCOM teal, as in the Boardroom; orange stays for load warnings.
-  readonly property color alert:   "#a8ecff"
+  readonly property color alert:   encom.alert || "#a8ecff"
 
   readonly property string mono: "JetBrainsMono Nerd Font"
 

@@ -10,6 +10,7 @@ different upstream fails loudly rather than half-patching.
 Re-run after changing this file:  python3 patch.py
 """
 import pathlib
+import re
 import shutil
 import sys
 
@@ -118,6 +119,19 @@ def patch_bundle(js):
               "SimpleClock.prototype.tick = function(){\n"
               "    var timeSinceStarted = new Date() - (window.encomBootTime || this.firstTick);",
               what="stopwatch dial")
+    # ── Theme colours ─────────────────────────────────────────────────────
+    # The app draws its canvases (globe, charts, dials) in its own cyan and
+    # amber. Look them up at run time instead, so they follow the current
+    # theme (window.encomColour comes from the server's /palette.js, which
+    # loads first; unthemed, it hands back the same colour).
+    for base in ("#00eeee", "#ffcc00", "#8fd8d8"):
+        # The bundle spells them in both cases.
+        literal = re.compile('"' + re.escape(base) + '"', re.IGNORECASE)
+        if not literal.search(js):
+            sys.exit("colour %s not found in the bundle" % base)
+        js = literal.sub(lambda m: "window.encomColour(%s)" % m.group(0), js)
+    js = ("window.encomColour = window.encomColour || function (c) { return c };\n") + js
+
     return js
 
 
@@ -158,6 +172,7 @@ def patch_html(html):
     # History for the chart before the bundle; our glue after it.
     html = edit(html, '<script src="build/encom-boardroom.js"></script>',
                 '<script src="history.js"></script>\n'
+                '        <script src="palette.js"></script>\n'
                 '        <script src="build/encom-boardroom.js"></script>\n'
                 '        <script src="encom-local.js"></script>', what="script tags")
     return html

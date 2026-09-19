@@ -1,0 +1,18 @@
+{
+  "_": "ENCOM palette. Every ENCOM piece (HUD, bar, Light Cycles, lock screen, Boardroom) reads this from the current theme; each falls back to these Tron: Legacy colours if it is missing.",
+  "accent": "#b06cff",
+  "accentHi": "#e4cdff",
+  "accentDim": "#3d097b",
+  "contrast": "#ffc300",
+  "contrastHi": "#ffdf78",
+  "alert": "#e4cdff",
+  "ink": "#030205",
+  "sideAName": "USERS",
+  "sideBName": "PROGRAMS",
+  "sideA": "#3b7bff",
+  "sideAHi": "#d7e6ff",
+  "sideB": "#ffbe00",
+  "sideBHi": "#fff3cf",
+  "portrait": "polyhedron",
+  "lockScene": "digitise"
+}

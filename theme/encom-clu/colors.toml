@@ -1,0 +1,36 @@
+# ENCOM OS-12 — Clu
+# Clu's grid: amber circuitry, cold cyan alarms.
+mode = "dark"
+
+accent = "#ff9d2e"
+selection = "#512c02"
+muted = "#653a09"
+
+background = "#0c0906"
+dark_background = "#090704"
+darker_background = "#040302"
+lighter_background = "#1e160e"
+
+foreground = "#ffd19d"
+dark_foreground = "#956834"
+light_foreground = "#ffb663"
+bright_foreground = "#ffdeba"
+
+hyprland_active_border = "rgba(6fc3dfee) rgba(19c7ffee) rgba(0a6f8fee) 45deg"
+hyprland_inactive_border = "rgba(0c202bcc)"
+
+red = "#d1ff3d"
+yellow = "#5ed1f6"
+orange = "#38c6f4"
+green = "#3ddbb4"
+cyan = "#ff9d2e"
+blue = "#3fa9f5"
+magenta = "#9d7bff"
+brown = "#8a5a2b"
+
+bright_red = "#d5ff63"
+bright_yellow = "#90dff9"
+bright_green = "#6ff2d2"
+bright_cyan = "#ffc37e"
+bright_blue = "#7fc9ff"
+bright_magenta = "#c0a9ff"

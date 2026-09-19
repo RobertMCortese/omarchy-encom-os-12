@@ -14,11 +14,22 @@
 (function () {
   "use strict";
 
+  // The current theme's ENCOM palette (served at /palette.js), with the
+  // Tron: Legacy colours standing in when there is none.
+  var P = window.encomPalette || {};
   var TEAM = {
-    clu:     { name: "CLU",      core: "#fff1d6", glow: "#ff8a1c" },
-    program: { name: "PROGRAMS", core: "#f2feff", glow: "#8fe3ff" },
+    clu:     { name: P.sideBName || "CLU", core: P.sideBHi || "#fff1d6", glow: P.sideB || "#ff8a1c" },
+    program: { name: P.sideAName || "PROGRAMS", core: P.sideAHi || "#f2feff", glow: P.sideA || "#8fe3ff" },
   };
-  var OUTLINE = 0xbfe9ff;             // stadium linework
+  var OUTLINE = P.accentHi || "#bfe9ff";       // stadium linework
+  var GRID = P.accent || "#5ab4dc";            // the floor grid
+
+  // "rgba(r,g,b,a)" from a hex colour, for the canvas textures.
+  function rgba(hex, a) {
+    var c = new THREE.Color(hex)
+    return "rgba(" + Math.round(c.r * 255) + "," + Math.round(c.g * 255) + "," +
+           Math.round(c.b * 255) + "," + a + ")";
+  }
 
   // ── Textures, all drawn on canvases at load ─────────────────────────────
   function canvas(w, h, draw) {
@@ -198,10 +209,10 @@
     var floorTexture = canvas(128, 128, function (g, w, h) {
       g.fillStyle = "#02060a";
       g.fillRect(0, 0, w, h);
-      g.fillStyle = "rgba(90,180,220,0.22)";
+      g.fillStyle = rgba(GRID, 0.22);
       g.fillRect(0, 0, w, 2);
       g.fillRect(0, 0, 2, h);
-      g.fillStyle = "rgba(90,180,220,0.07)";
+      g.fillStyle = rgba(GRID, 0.07);
       g.fillRect(0, h / 2, w, 1);
       g.fillRect(w / 2, 0, 1, h);
     });

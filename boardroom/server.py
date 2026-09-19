@@ -715,6 +715,55 @@ def boot_time_ms():
     return None
 
 
+# ── Theme colours ──────────────────────────────────────────────────────────
+# The Boardroom draws itself in cyan and amber. These are its colours, split
+# into the two families, so a theme can move them: the cyans follow the
+# theme's accent, the ambers its contrast colour. Each keeps its own
+# lightness and saturation relative to its family's anchor.
+BOARDROOM_CYANS = ["#00eeee", "#8fd8d8", "#6fc0ba", "#005b8e", "#1b2f2d", "#1d2c33"]
+BOARDROOM_AMBERS = ["#ffcc00", "#feb400"]
+
+
+def _hls(colour):
+    import colorsys
+    c = colour.lstrip("#")
+    return colorsys.rgb_to_hls(*(int(c[i:i + 2], 16) / 255 for i in (0, 2, 4)))
+
+
+def _hex(hue, light, sat):
+    import colorsys
+    r, g, b = colorsys.hls_to_rgb(hue % 1.0, min(1, max(0, light)), min(1, max(0, sat)))
+    return "#%02x%02x%02x" % (round(r * 255), round(g * 255), round(b * 255))
+
+
+def theme_palette():
+    """The current theme's ENCOM palette, or {}."""
+    try:
+        path = pathlib.Path.home() / ".local/state/omarchy/current/theme/encom.json"
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def boardroom_colours(palette):
+    """{ the Boardroom's colour: the theme's }, empty without a palette."""
+    accent, contrast = palette.get("accent"), palette.get("contrast")
+    if not accent or not contrast:
+        return {}
+    out = {}
+    for family, anchor, target in ((BOARDROOM_CYANS, "#00eeee", accent),
+                                   (BOARDROOM_AMBERS, "#ffcc00", contrast)):
+        _, _, a_sat = _hls(anchor)
+        t_hue, _, t_sat = _hls(target)
+        for colour in family:
+            _, light, sat = _hls(colour)
+            # Keep each colour's own lightness: these are already tuned for
+            # the layout, and stretching them washes the lighter ones out.
+            # Only the hue moves, with saturation scaled to the theme's.
+            out[colour] = _hex(t_hue, light, sat * (t_sat / a_sat if a_sat else 1))
+    return out
+
+
 # ── HTTP ───────────────────────────────────────────────────────────────────
 DISMISSED = threading.Event()
 
@@ -738,6 +787,27 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.icon(path[len("/icon/"):])
         if path == "/alerts.json":
             return self.body(json.dumps(ALERTS.snapshot()).encode(), "application/json")
+        if path == "/encom-portrait.gif":
+            # The comms portrait beside an alert: the current theme's, or
+            # the one shipped with the Boardroom.
+            themed = pathlib.Path.home() / ".local/state/omarchy/current/theme/portrait.gif"
+            source = themed if themed.exists() else SITE_DIR / "encom-portrait.gif"
+            try:
+                return self.body(source.read_bytes(), "image/gif")
+            except OSError:
+                return self.send_error(404)
+        if path == "/palette.js":
+            # The current theme's ENCOM palette, and the Boardroom's own
+            # colours mapped into it. Loads before everything else, so the
+            # app draws itself in the theme from its first frame.
+            palette = theme_palette()
+            colours = boardroom_colours(palette)
+            body = ("window.encomPalette = " + json.dumps(palette) + ";\n"
+                    "window.encomColours = " + json.dumps(colours) + ";\n"
+                    "window.encomColour = function (c) {\n"
+                    "  return window.encomColours[String(c).toLowerCase()] || c;\n"
+                    "};\n")
+            return self.body(body.encode(), "application/javascript")
         if path == "/history.js":
             # Runs before the bundle, which opens its EventSource at load from
             # window._esPath: point it at the one stream this page will show.

@@ -1,20 +1,20 @@
 # ENCOM OS-12 for Omarchy
 
-A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper.
+A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in four colours — OS-12 cyan, Clu orange, Ares red and 1982 violet.
 
 ![Desktop](docs/desktop.png)
 
 ## What you get
 
 **The look**
-- A full Omarchy theme: black glass, Tron cyan, Clu-orange for alarms. Terminals, btop, editors and the shell all pick it up.
+- A full Omarchy theme: black glass, Tron cyan, Clu-orange for alarms. Terminals, btop, editors and the shell all pick it up. Three more themes come with it ([below](#four-themes)).
 - Three generated wallpapers (grid horizon, circuit board, sea of simulation).
 - The ENCOM International logo on the bar, the HUD, the terminal and the boot splash.
 - Square window corners and windows that *rez* in and *derezz* out.
 - The **Encom-Cyan** cursor: Adwaita's shapes, recoloured with a soft cyan halo.
 - Translucent terminals over the grid, and an ENCOM fastfetch readout.
 
-**The disc wars lock screen**: behind the password field, two original fighters, a teal program and an orange sentinel, duel with identity discs on concentric ring platforms high above the arena floor.
+**The disc wars lock screen**: behind the password field, two original fighters, a teal program and an orange sentinel, duel with identity discs on concentric ring platforms high above the arena floor. (The 1982 theme puts [a different scene](#four-themes) there.)
 
 ![Lock screen: a disc banked off the ceiling, trailing light](docs/lock.png)
 
@@ -54,9 +54,10 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 - The film's look: glossy black cycles with glowing wheel rings and body lines, Clu orange against program blue-white. Light ribbons are bright at the top and bottom edges and see-through in the middle. The arena is a dark grid inside stands drawn in bluish-white vector outlines, with rows of lamps and floodlight towers.
 - None of those glows are real light sources. They're textures, lines and sprites, which keeps the Broadwell GPU's load down.
 - Silent. It closes on any key or mouse movement, and the screen still locks on schedule behind it.
+- The riders wear the theme's colours; on the 1982 theme they go back to the original arcade game's blue against yellow.
 - Prefer the Boardroom as the screensaver? Set `"screensaver": "boardroom"` (see below). It then rotates through SYSTEM, GITHUB and WIKIPEDIA.
 
-**Alerts**: disk nearly full, sustained heat, low battery, memory pressure, failed services and out-of-memory kills. They show in ENCOM teal: a **!** on the bar (visible over windows), a SYSTEM ALERT panel on the HUD, and in the Boardroom a SYSTEM ALERT box with an animated comms portrait, Star Fox style.
+**Alerts**: disk nearly full, sustained heat, low battery, memory pressure, failed services and out-of-memory kills. They show in the theme's alert colour, ENCOM teal as standard: a **!** on the bar (visible over windows), a SYSTEM ALERT panel on the HUD, and in the Boardroom a SYSTEM ALERT box with an animated comms portrait, Star Fox style.
 
 ![An alert arriving in the Boardroom](docs/alert.gif)
 
@@ -66,6 +67,34 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 |---|---|
 | ![Launcher](docs/launcher.png) | ![Terminal](docs/terminal.png) |
 | ![Boot splash](docs/boot-splash.png) | |
+
+## Four themes
+
+The same desktop comes in four colours. Everything above follows the one you pick: the terminal and editor palettes, the wallpapers, the logo, the boot splash, the HUD and bar, the alerts and their portrait, the light cycles, the lock screen and the Boardroom projection.
+
+![The four themes](docs/themes.png)
+
+| Theme | | The sides |
+|---|---|---|
+| **ENCOM OS-12** | Tron cyan, Clu orange for alarms | PROGRAMS vs CLU |
+| **ENCOM Clu** | Clu's orange, cyan for alarms | CLU vs PROGRAMS |
+| **ENCOM Ares** | Ares red over black, cold blue accents | SENTINELS vs PROGRAMS |
+| **ENCOM 1982** | The first film: violet and amber | USERS vs PROGRAMS |
+
+Switch with Omarchy's own theme menu, where they're listed as *Encom Os 12*, *Encom Clu*, *Encom Ares* and *Encom Tron 82*, or with `omarchy theme set "Encom Ares"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
+
+**1982 goes further.** The light cycles go back to the original game's blue against yellow (kept 3-on-3, with our AI). And the password screen is a different scene: not the disc duel but **the digitiser**, an original abstract piece in the spirit of the first film's laser transfer, an octagonal tunnel receding into the middle, rings pulsing outward, a field of bits lighting in waves and two figures tracing and folding themselves, all drawn a frame at a time.
+
+![The 1982 lock screen: the digitiser](docs/lock-82.gif)
+
+Making your own is a script: colours in, theme out.
+
+```bash
+tools/make-theme.py                 # rebuild all variants from theme/encom-os-12
+tools/make-portrait.py encom-ares   # redraw one theme's alert portrait
+```
+
+`make-theme.py` holds a small table of target colours per theme and restyles the base theme's files into new ones, generating the wallpapers, the logo, the boot art, the preview and the palette. Each palette carries `lockScene` (`duel` or `digitise`), `portrait` (which portrait is drawn: `sentinel`, `glitch` or `polyhedron`) and the two sides' names and colours. `make-portrait.py` draws the portrait as SVG frames and assembles the GIF; drop in a GIF of your own at `theme/<name>/portrait.gif` if you'd rather.
 
 ## Install
 
@@ -107,15 +136,16 @@ cd omarchy-encom-os-12
 
 | Path | What |
 |---|---|
-| `theme/encom-os-12/` | The Omarchy theme, logo (+ ASCII generator) and boot art |
+| `theme/encom-os-12/` | The Omarchy theme, logo (+ ASCII generator) and boot art. Each theme also carries `encom.json`, the palette every piece here reads |
+| `theme/encom-clu/`, `encom-ares/`, `encom-tron-82/` | The three variants, generated by `tools/make-theme.py` |
 | `hud/` | Quickshell service plugin: HUD panels, alerts, idle trigger |
 | `bar/` | Bar widgets and the telemetry probe |
 | `shell/` | Workspace nodes, and the patch that chamfers Omarchy's launcher |
-| `lock/` | The disc wars scene, its baked motion capture (`poses.js`), and the patch that adds it to a clone of Omarchy's lock |
+| `lock/` | The disc wars scene, the 1982 digitiser (`Digitize.qml`), the baked motion capture (`poses.js`), and the patch that adds the theme's scene to a clone of Omarchy's lock |
 | `boardroom/` | Monitor server, alert checks, icon resolver, the layer-shell wallpaper and its services, and `patch.py`, which rebuilds the upstream app |
 | `lightcycles/` | The 3-on-3 game: engine, AI, camera and scoreboard (`encom-game.js`), cycles and stadium (`encom-arena.js`), and the pinned three.js version |
 | `hypr/`, `terminal/`, `fastfetch/`, `cursor/` | Look'n'feel pieces |
-| `tools/` | How the logo was traced, and how the lock screen's motion capture was baked |
+| `tools/` | The theme and portrait generators, how the logo was traced, and how the lock screen's motion capture was baked |
 
 Notes for anyone hacking on it:
 - The HUD is a `service` plugin, so edits to it need `omarchy restart shell`.

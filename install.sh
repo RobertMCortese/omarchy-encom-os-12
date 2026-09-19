@@ -94,8 +94,10 @@ fi
 say "Installing ENCOM OS-12$( (( DRY )) && echo ' (dry run)')"
 
 # ── Theme ──────────────────────────────────────────────────────────────────
-say "Theme: colours, shell styling, wallpapers, logo, boot splash art"
-put_own "$REPO/theme/encom-os-12" "$OMA/themes/encom-os-12"
+say "Themes: ENCOM OS-12, and the Clu, Ares and 1982 variants"
+for t in "$REPO"/theme/*/; do
+  put_own "$t" "$OMA/themes/$(basename "$t")"
+done
 
 # ── Boardroom screensaver / monitor ───────────────────────────────────────
 say "Boardroom: fetching Rob Scanlon's encom-boardroom (MIT) at the pinned revision"
