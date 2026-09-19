@@ -95,6 +95,7 @@ cd omarchy-encom-os-12
 | `cycle` | `["system", "github", "wikipedia"]` | Boardroom screensaver rotation |
 | `cycle_seconds` | `120` | Time on each |
 | `alerts` | see file | Thresholds: disk %, CPU °C, battery %, memory, swap |
+| `lock_blank_seconds` | not set | How long the lock screen stays lit with no input before the display blanks. Unset keeps Omarchy's 5 seconds. After changing it, run `python3 ~/.config/omarchy/plugins/$USER.lock/encom-lock-patch.py` and `omarchy restart shell` |
 
 - **Screensaver timeout:** Omarchy's own `idle.screensaver` in `~/.config/omarchy/shell.json`.
 - **Turn the ENCOM screensaver off:** `omarchy-toggle encom-screensaver-off`, which gives you no screensaver. To get Omarchy's own back, also run `omarchy toggle screensaver`.
