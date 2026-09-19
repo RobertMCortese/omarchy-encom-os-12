@@ -703,6 +703,18 @@ def wikipedia_collector():
                  stream="wikipedia", pin_home=False)
 
 
+def boot_time_ms():
+    """When this machine booted, in ms since the epoch (for the stopwatch)."""
+    try:
+        with open("/proc/stat") as f:
+            for line in f:
+                if line.startswith("btime "):
+                    return int(line.split()[1]) * 1000
+    except OSError:
+        pass
+    return None
+
+
 # ── HTTP ───────────────────────────────────────────────────────────────────
 DISMISSED = threading.Event()
 
@@ -736,6 +748,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             body = (
                 "window.encomSystemHistory = " + json.dumps(History.series()) + ";\n"
                 "window.encomConfig = " + json.dumps(cfg) + ";\n"
+                "window.encomBootTime = " + json.dumps(boot_time_ms()) + ";\n"
                 "(function () {\n"
                 "  var m = /^#(screensaver|wallpaper)(?::(\\w+))?/.exec(location.hash);\n"
                 "  var c = window.encomConfig.cycle;\n"

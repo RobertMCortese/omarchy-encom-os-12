@@ -105,10 +105,25 @@ def patch_bundle(js):
               "        lastChild.className = \"interaction-data\" + (message.alert ? \" encom-alert\" : "
               "(message.type === \"OK\" ? \" encom-ok\" : \"\"));\n"
               "        if(message.popularity > 100 || message.alert){", what="alert rows")
+
+    # ── The stopwatch and its dial count from this machine's boot (from
+    # server.py, window.encomBootTime) instead of from page load, so every
+    # new Boardroom shows the same running time. Hours no longer wrap at 100.
+    js = edit(js, "    var elapsed = new Date() - startDate;",
+              "    var elapsed = new Date() - (window.encomBootTime || startDate);", what="stopwatch")
+    js = edit(js, "    var hours = Math.floor((elapsed / 3600000) % 100); ",
+              "    var hours = Math.floor(elapsed / 3600000); ", what="stopwatch hours")
+    js = edit(js, "SimpleClock.prototype.tick = function(){\n"
+                  "    var timeSinceStarted = new Date() - this.firstTick;",
+              "SimpleClock.prototype.tick = function(){\n"
+              "    var timeSinceStarted = new Date() - (window.encomBootTime || this.firstTick);",
+              what="stopwatch dial")
     return js
 
 
 def patch_html(html):
+    html = edit(html, "                    TIME SINCE START\n",
+                "                    TIME SINCE BOOT\n", what="stopwatch label")
     html = edit(html, """                                <div class="folder-label">
                                     Test Stream
                                 </div>""",
