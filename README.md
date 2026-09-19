@@ -44,6 +44,10 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 
 **Alerts**: disk nearly full, sustained heat, low battery, memory pressure, failed services and out-of-memory kills. They show in ENCOM teal: a **!** on the bar (visible over windows), a SYSTEM ALERT panel on the HUD, and in the Boardroom a SYSTEM ALERT box with an animated comms portrait, Star Fox style.
 
+![An alert arriving in the Boardroom](docs/alert.gif)
+
+*An incoming alert (simulated): the comms window opens, then the message slides out beside it.*
+
 | | |
 |---|---|
 | ![Launcher](docs/launcher.png) | ![Terminal](docs/terminal.png) |
