@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "encom.hud",
+  "name": "ENCOM OS-12 HUD",
+  "version": "1.0.0",
+  "author": "omarchy-encom-os-12",
+  "description": "Always-on Tron-style desktop HUD: corner brackets, system ident, live telemetry readout",
+  "kinds": [
+    "service"
+  ],
+  "entryPoints": {
+    "service": "Hud.qml"
+  }
+}

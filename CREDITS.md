@@ -1,0 +1,67 @@
+# Credits and licences
+
+## ENCOM Boardroom — Rob Scanlon
+
+The screensaver is **Rob Scanlon's [ENCOM Boardroom](https://www.robscanlon.com/encom-boardroom/)**
+([github.com/arscan/encom-boardroom](https://github.com/arscan/encom-boardroom)), an HTML5/WebGL
+recreation of the boardroom scene in *Tron: Legacy*. It is used under the MIT licence:
+
+> The MIT License (MIT)
+> Copyright (c) 2014-2017 Robert Scanlon
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+> and associated documentation files (the "Software"), to deal in the Software without
+> restriction, including without limitation the rights to use, copy, modify, merge, publish,
+> distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+> Software is furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all copies or
+> substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+> BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+> NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+> DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This repository does not contain his code. `install.sh` clones it at the revision in
+`boardroom/UPSTREAM_REV`, keeps his licence alongside it, and `boardroom/patch.py` applies the
+local changes:
+- a SYSTEM stream in place of the random test stream
+- captions derived from the data
+- buffering of events that arrive during the intro
+- alert rows
+
+His own "created by @arscan" credit inside the app is left as it is.
+
+## Omarchy
+
+Built on [Omarchy](https://omarchy.org) (github.com/basecamp/omarchy). The workspace nodes
+(`shell/workspaces/Workspaces.qml`) are adapted from Omarchy's workspace widget. The chamfered
+launcher is Omarchy's own menu, cloned on your machine by `omarchy plugin clone` and patched by
+`shell/menu/encom-chamfer-patch.py`; this repository does not copy the menu.
+
+## DB-IP
+
+IP geolocation by [DB-IP](https://db-ip.com), "IP to City Lite" database, licensed under
+[Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
+It is downloaded by the installer, not stored here.
+
+## Adwaita cursors
+
+The Encom-Cyan cursor is generated on install by recolouring the cursors of GNOME's
+[Adwaita icon theme](https://gitlab.gnome.org/GNOME/adwaita-icon-theme) (CC BY-SA 3.0 /
+LGPL-3.0). This repository contains only the script that does it (`cursor/build.sh`).
+
+## Wikimedia
+
+The live Wikipedia view reads Wikimedia's public
+[EventStreams](https://wikitech.wikimedia.org/wiki/Event_Platform/EventStreams) recentchange feed,
+only while that view is on screen. Edit content is © its contributors under CC BY-SA.
+
+## ENCOM, Tron and Disney
+
+*Tron*, *Tron: Legacy* and **ENCOM** are trademarks of Disney. The ENCOM International logo in
+`theme/encom-os-12/logo/` was traced (see `tools/make-logo.sh`) from the reference image on the
+[Tron wiki](https://tron.fandom.com/wiki/ENCOM). This is an unofficial fan project, not affiliated
+with or endorsed by Disney; the logo is not covered by this repository's MIT licence.

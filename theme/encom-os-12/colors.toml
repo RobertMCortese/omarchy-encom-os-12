@@ -1,0 +1,36 @@
+# ENCOM OS-12 — Tron: Legacy
+# Black glass, cold cyan circuitry, Clu-orange for alarm states.
+mode = "dark"
+
+accent = "#6fc3df"
+selection = "#123a4a"
+muted = "#1d4d5e"
+
+background = "#05090d"
+dark_background = "#03060a"
+darker_background = "#010305"
+lighter_background = "#0c1820"
+
+foreground = "#cfeefa"
+dark_foreground = "#4d7f92"
+light_foreground = "#9fd8ea"
+bright_foreground = "#eafaff"
+
+hyprland_active_border = "rgba(6fc3dfee) rgba(19c7ffee) rgba(0a6f8fee) 45deg"
+hyprland_inactive_border = "rgba(0c202bcc)"
+
+red = "#ff6b3d"
+yellow = "#ffb347"
+orange = "#ff8c21"
+green = "#3ddbb4"
+cyan = "#6fc3df"
+blue = "#3fa9f5"
+magenta = "#9d7bff"
+brown = "#8a5a2b"
+
+bright_red = "#ff8d63"
+bright_yellow = "#ffd07a"
+bright_green = "#6ff2d2"
+bright_cyan = "#a8ecff"
+bright_blue = "#7fc9ff"
+bright_magenta = "#c0a9ff"

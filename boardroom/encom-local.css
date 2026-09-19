@@ -1,0 +1,92 @@
+/* ENCOM local styles, loaded after upstream's. */
+
+/* ── Picture panels: program icons instead of GitHub avatars ─────────────
+   Upstream's photos were cropped squares; icons need to sit contained and
+   centred with room for the name label. */
+.user-pic {
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center 38%;
+    background-origin: content-box;
+    box-sizing: border-box;
+    padding: 12px 12px 22px;
+    background-color: rgba(111, 195, 223, 0.04);
+    box-shadow: inset 0 0 0 1px rgba(111, 195, 223, 0.18);
+}
+.user-pic.larger {
+    padding: 26px 26px 34px;
+}
+.user-pic span {
+    background: rgba(2, 20, 27, 0.85);
+    color: #a8ecff;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* ── Live list: alert and resolved rows ─────────────────────────────────── */
+.interaction-data.encom-alert li,
+.interaction-data.encom-alert .interaction-popular {
+    color: #ff8c21 !important;
+}
+.interaction-data.encom-ok li {
+    color: #3ddbb4 !important;
+}
+
+/* ── SYSTEM ALERT box ───────────────────────────────────────────────────── */
+#encom-alerts {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    width: min(760px, 70vw);
+    z-index: 1000;
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    pointer-events: none;
+}
+#encom-alerts[hidden] { display: none; }
+#encom-alerts .frame {
+    position: relative;
+    padding: 12px 18px 12px 18px;
+    background: rgba(12, 5, 0, 0.88);
+    border: 1px solid #ff8c21;
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+    box-shadow: 0 0 18px rgba(255, 140, 33, 0.35);
+}
+#encom-alerts .frame::before {
+    /* The bright tab, as on the HUD panels. */
+    content: "";
+    position: absolute;
+    top: 0; left: 12px;
+    width: 70px; height: 2px;
+    background: #ffb347;
+}
+#encom-alerts .head {
+    color: #ff8c21;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.35em;
+    margin-bottom: 6px;
+    animation: encom-alert-pulse 1.4s ease-in-out infinite;
+}
+#encom-alerts .row {
+    color: #ffd07a;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    line-height: 1.55;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#encom-alerts .row .lvl {
+    display: inline-block;
+    min-width: 46px;
+    color: #ff8c21;
+}
+#encom-alerts .row.crit .lvl { color: #ff6b3d; }
+@keyframes encom-alert-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}

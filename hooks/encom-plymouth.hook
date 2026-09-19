@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# The omarchy package owns /usr/share/plymouth/themes/omarchy, so any update
+# that ships those files puts the stock splash back over the ENCOM one. Put it
+# back -- but only when it was actually reverted, because re-applying rebuilds
+# the initramfs and that is not worth doing on every update.
+#
+# Never fails the update: a boot splash is not worth aborting an upgrade over.
+
+theme_dir=$(omarchy-theme-dir encom-os-12 2>/dev/null) || exit 0
+logo=$theme_dir/unlock.png
+[[ -f $logo ]] || exit 0
+
+if cmp -s "$logo" /usr/share/plymouth/themes/omarchy/logo.png; then
+  exit 0
+fi
+
+echo -e "\e[36mRestoring the ENCOM OS-12 boot splash (the update reverted it)...\e[0m"
+omarchy plymouth set-by-theme encom-os-12 ||
+  echo -e "\e[33mCould not restore the ENCOM boot splash; run: omarchy plymouth set-by-theme encom-os-12\e[0m" >&2
+exit 0

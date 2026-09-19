@@ -1,0 +1,27 @@
+#!/bin/bash
+# ENCOM Boardroom: live monitor of this machine, after the Tron: Legacy boardroom.
+#
+#   encom-boardroom                 open it as a normal app window
+#   encom-boardroom --screensaver   fullscreen; closes on any input or on lock
+#
+# The ENCOM HUD service calls the --screensaver form when the session goes
+# idle. Turn that off with:  omarchy-toggle encom-boardroom-off
+
+set -u
+BOARDROOM="$HOME/.local/share/encom-boardroom"
+STATE="$HOME/.local/state/omarchy"
+LOG="$HOME/.local/state/encom-boardroom/server.log"
+
+if [[ ${1:-} == --screensaver ]]; then
+  # Same conditions Omarchy's own screensaver respects.
+  [[ -f $STATE/toggles/encom-boardroom-off ]] && exit 0
+  [[ -f $STATE/indicators/stay-awake ]] && exit 0
+  [[ $(omarchy-shell lock isLocked 2>/dev/null) == "true" ]] && exit 0
+fi
+
+# One boardroom at a time.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/encom-boardroom.lock"
+flock -n 9 || exit 0
+
+mkdir -p "$(dirname "$LOG")"
+exec python3 "$BOARDROOM/server.py" "$@" 2>>"$LOG"

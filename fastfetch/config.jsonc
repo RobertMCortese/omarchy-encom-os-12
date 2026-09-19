@@ -1,0 +1,141 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "type": "file",
+    "source": "~/.config/omarchy/branding/encom.txt",
+    "color": {
+      "1": "cyan"
+    },
+    "padding": {
+      "top": 2,
+      "right": 5,
+      "left": 2
+    }
+  },
+  "display": {
+    "disableLinewrap": true,
+    "separator": "  "
+  },
+  "modules": [
+    "break",
+    {
+      "type": "custom",
+      "format": "\u001b[36m╭─ \u001b[96mSYSTEM IDENT\u001b[36m ────────────────────────────╮"
+    },
+    {
+      "type": "title",
+      "key": "  NODE",
+      "keyColor": "cyan",
+      "format": "{user-name}@{host-name}"
+    },
+    {
+      "type": "command",
+      "key": "  BUILD",
+      "keyColor": "cyan",
+      "text": "v=$(omarchy-version 2>/dev/null); echo \"Omarchy ${v:-?}\""
+    },
+    {
+      "type": "kernel",
+      "key": "  KRNL",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "wm",
+      "key": "  GRID",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "command",
+      "key": "  THEME",
+      "keyColor": "cyan",
+      "text": "omarchy-theme-current 2>/dev/null"
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[36m╰─────────────────────────────────────────────╯"
+    },
+    "break",
+    {
+      "type": "custom",
+      "format": "\u001b[36m╭─ \u001b[96mHARDWARE\u001b[36m ────────────────────────────────╮"
+    },
+    {
+      "type": "host",
+      "key": "  CHAS",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "cpu",
+      "key": "  PROC",
+      "keyColor": "cyan",
+      "showPeCoreCount": true
+    },
+    {
+      "type": "gpu",
+      "key": "  RNDR",
+      "keyColor": "cyan",
+      "detectionMethod": "pci",
+      "format": "{name}"
+    },
+    {
+      "type": "display",
+      "key": "  DISP",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "memory",
+      "key": "  CORE",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "swap",
+      "key": "  SWAP",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "disk",
+      "key": "  STOR",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "battery",
+      "key": "  PWR",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[36m╰─────────────────────────────────────────────╯"
+    },
+    "break",
+    {
+      "type": "custom",
+      "format": "\u001b[36m╭─ \u001b[96mCYCLE\u001b[36m ───────────────────────────────────╮"
+    },
+    {
+      "type": "uptime",
+      "key": "  UPTM",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "command",
+      "key": "  TEMP",
+      "keyColor": "cyan",
+      "text": "for z in /sys/class/thermal/thermal_zone*; do [ \"$(cat $z/type 2>/dev/null)\" = x86_pkg_temp ] && { echo \"$(( $(cat $z/temp) / 1000 ))°C\"; exit; }; done; echo n/a"
+    },
+    {
+      "type": "packages",
+      "key": "  PKGS",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[36m╰─────────────────────────────────────────────╯"
+    },
+    "break",
+    {
+      "type": "custom",
+      "format": "  \u001b[96m● \u001b[36mGREETINGS, PROGRAM.\u001b[0m"
+    },
+    "break"
+  ]
+}

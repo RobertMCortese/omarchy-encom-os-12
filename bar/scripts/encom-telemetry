@@ -1,0 +1,78 @@
+#!/bin/bash
+# ENCOM OS-12 telemetry probe.
+# Emits one JSON line: cpu/mem percentages, net throughput, thermal, power.
+# Deltas are held in a state file so a single sample per invocation is enough —
+# the bar polls this, and sleeping here would pin a core on a Broadwell chip.
+
+STATE="${XDG_RUNTIME_DIR:-/tmp}/encom-telemetry.state"
+
+read -r _ u n s i rest < /proc/stat
+now_idle=$i
+now_total=$((u + n + s + i))
+for v in $rest; do now_total=$((now_total + v)); done
+
+# Sum all non-loopback, non-virtual interfaces.
+rx=0; tx=0
+for dev in /sys/class/net/*; do
+  name=${dev##*/}
+  case $name in lo|docker*|veth*|br-*|virbr*|tun*|tap*) continue ;; esac
+  [[ -r $dev/statistics/rx_bytes ]] || continue
+  rx=$((rx + $(<"$dev/statistics/rx_bytes")))
+  tx=$((tx + $(<"$dev/statistics/tx_bytes")))
+done
+
+now_ms=$(( $(date +%s%N) / 1000000 ))
+
+cpu=0; rxr=0; txr=0
+if [[ -r $STATE ]]; then
+  read -r p_idle p_total p_rx p_tx p_ms < "$STATE"
+  d_total=$((now_total - p_total))
+  d_idle=$((now_idle - p_idle))
+  (( d_total > 0 )) && cpu=$(( (100 * (d_total - d_idle)) / d_total ))
+  d_ms=$((now_ms - p_ms))
+  if (( d_ms > 0 )); then
+    rxr=$(( (rx - p_rx) * 1000 / d_ms ))
+    txr=$(( (tx - p_tx) * 1000 / d_ms ))
+  fi
+fi
+(( cpu < 0 )) && cpu=0; (( cpu > 100 )) && cpu=100
+(( rxr < 0 )) && rxr=0; (( txr < 0 )) && txr=0
+echo "$now_idle $now_total $rx $tx $now_ms" > "$STATE"
+
+# Memory: "used" the way free(1) reports it (total - available).
+mem=0; memused=0; memtotal=0
+while read -r key val _; do
+  case $key in
+    MemTotal:) memtotal=$val ;;
+    MemAvailable:) memavail=$val ;;
+  esac
+done < /proc/meminfo
+if (( memtotal > 0 )); then
+  memused=$(( (memtotal - memavail) / 1024 ))
+  mem=$(( 100 * (memtotal - memavail) / memtotal ))
+fi
+
+# Thermal, in whole degrees C. Prefer the CPU package zone: on this Mac the
+# first zone is pch_wildcat_point (the chipset), which is not what we mean by
+# "CPU temperature".
+temp=0
+for want in x86_pkg_temp coretemp cpu-thermal acpitz; do
+  for z in /sys/class/thermal/thermal_zone*; do
+    [[ -r $z/type && -r $z/temp ]] || continue
+    [[ $(<"$z/type") == "$want" ]] || continue
+    temp=$(( $(<"$z/temp") / 1000 ))
+    break 2
+  done
+done
+
+# Battery, when present.
+bat=-1; bstat="none"
+for b in /sys/class/power_supply/BAT*; do
+  [[ -r $b/capacity ]] || continue
+  bat=$(<"$b/capacity")
+  [[ -r $b/status ]] && bstat=$(<"$b/status")
+  break
+done
+
+printf '{"cpu":%d,"mem":%d,"memused":%d,"rx":%d,"tx":%d,"temp":%d,"bat":%d,"bstat":"%s"}\n' \
+  "$cpu" "$mem" "$memused" "$rxr" "$txr" "$temp" "$bat" "$bstat"
