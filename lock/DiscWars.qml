@@ -13,7 +13,8 @@ import "poses.js" as Poses
 // a ring is gone; or in place with a duck, a sweep kick or a split jump; the
 // disc ricochets off the glass. Now and then a throw connects: the fighter
 // is knocked back a ring and stunned, or, with no ring behind, slides off
-// and grabs the edge. Now and then a throw is
+// and grabs the edge; or, three times in ten, derezzes, its outline breaking
+// into a hundred pieces that tumble down to the arena floor. Now and then a throw is
 // banked off the ceiling onto one of the opponent's rings, often the one it
 // stands on; the defender may catch it on a shield held overhead, or lose
 // the ring. Losing its footing, a fighter drops and clings to the edge of
@@ -274,6 +275,82 @@ Item {
         color: "white"; opacity: Math.max(0, 0.85 - parent.age * 4)
       }
     }
+  }
+
+  // Derez debris: a hundred glowing fragments of a fighter's outline.
+  readonly property int pieceCount: 100
+  Repeater {
+    id: pieceItems
+    model: arena.pieceCount
+    Rectangle {
+      transformOrigin: Item.Left
+      antialiasing: true
+      visible: false
+    }
+  }
+  // [{ mid, half, vel, axis, spin, thick, col }], and when they broke off.
+  property var pieces: []
+  property real piecesBorn: -100
+
+  // Break fighter p into pieces: each limb into six, the head into four.
+  function shatter(p) {
+    var f = fs[p], W = []
+    for (var j = 0; j < 20; j++) W.push(toWorld(p, f.pose, j))
+    var centre = lerp3(W[0], W[9], 0.5), col = String(p === 0 ? arena.programHi : arena.sentinelHi)
+    var out = []
+    function piece(a, b, thick) {
+      var mid = lerp3(a, b, 0.5), half = [(b[0] - a[0]) * 0.45, (b[1] - a[1]) * 0.45, (b[2] - a[2]) * 0.45]
+      var dir = norm(sub(mid, centre)), k = rand(0.6, 2.2)
+      out.push({ mid: mid, half: half, thick: thick, col: col,
+                 vel: [dir[0] * k + rand(-0.5, 0.5), rand(0.8, 2.8), dir[2] * k + rand(-0.5, 0.5)],
+                 axis: norm([rand(-1, 1), rand(-1, 1), rand(-1, 1)]), spin: rand(-9, 9) })
+    }
+    limbs.forEach(function (lb) {
+      for (var i = 0; i < 6; i++) piece(lerp3(W[lb[0]], W[lb[1]], i / 6), lerp3(W[lb[0]], W[lb[1]], (i + 1) / 6), lb[2])
+    })
+    var hc = lerp3(W[10], W[11], 0.55)
+    for (var h = 0; h < 4; h++) {
+      var a0 = h * Math.PI / 2, a1 = a0 + Math.PI / 2
+      piece([hc[0] + Math.cos(a0) * 0.12, hc[1] + Math.sin(a0) * 0.13, hc[2]],
+            [hc[0] + Math.cos(a1) * 0.12, hc[1] + Math.sin(a1) * 0.13, hc[2]], 0.05)
+    }
+    pieces = out
+    piecesBorn = wall
+  }
+
+  // Rotate v about unit axis k by angle t (Rodrigues).
+  function turn(v, k, t) {
+    var c = Math.cos(t), s = Math.sin(t), d = dot(k, v), x = cross(k, v)
+    return [v[0] * c + x[0] * s + k[0] * d * (1 - c), v[1] * c + x[1] * s + k[1] * d * (1 - c),
+            v[2] * c + x[2] * s + k[2] * d * (1 - c)]
+  }
+
+  // Tumble the pieces down to the arena floor, bounce, settle and fade.
+  function stepPieces(dt) {
+    var age = wall - piecesBorn
+    var fade = age < 2.2 ? 1 : Math.max(0, 1 - (age - 2.2) / 1.0)
+    for (var i = 0; i < pieceCount; i++) {
+      var it = pieceItems.itemAt(i), pc = pieces[i]
+      it.visible = !!pc && fade > 0
+      if (!it.visible) continue
+      pc.vel[1] -= 9.8 * dt
+      pc.mid = [pc.mid[0] + pc.vel[0] * dt, pc.mid[1] + pc.vel[1] * dt, pc.mid[2] + pc.vel[2] * dt]
+      pc.half = turn(pc.half, pc.axis, pc.spin * dt)
+      if (pc.mid[1] < floorY + 0.02) {
+        // Hit the floor: bounce low, lose speed, and lie flatter.
+        pc.mid[1] = floorY + 0.02
+        pc.vel = [pc.vel[0] * 0.5, -pc.vel[1] * 0.25, pc.vel[2] * 0.5]
+        pc.spin *= 0.5
+        pc.half = [pc.half[0], pc.half[1] * 0.4, pc.half[2]]
+      }
+      var a = project(sub(pc.mid, pc.half)), b = project([pc.mid[0] + pc.half[0], pc.mid[1] + pc.half[1], pc.mid[2] + pc.half[2]])
+      placeSeg(it, a, b, Math.max(1.5, 0.5 * pc.thick * cam.F / a[2]))
+      it.color = pc.col
+      it.radius = it.height / 2
+      it.opacity = fade
+      it.z = 1000 - (a[2] + b[2]) * 10
+    }
+    if (fade <= 0) pieces = []
   }
 
   // Caption under the password field.
@@ -784,8 +861,16 @@ Item {
         fly(p, [from, lerp3(from, hitAt, 0.5).map(function (v, i) { return i === 1 ? v + rand(0.1, 0.4) : v }), hitAt],
             rand(0.85, 1.05), function () {
           spark(hitAt, hot(p))
-          if (canAct(q)) knockBack(q)
           flyHome(p, hitAt)
+          if (canAct(q) && Math.random() < 0.3) {
+            // Derezzed: the outline breaks apart and falls; a new round.
+            shatter(q)
+            spark(hitAt, "#ffffff")
+            setMode(q, "derez")
+            afterWall(3.0, function () { newRound(q) })
+            return
+          }
+          if (canAct(q)) knockBack(q)
           after(1.0, function () { rally(p) })
         })
         return
@@ -854,7 +939,8 @@ Item {
   // p's turn to attack.
   function rally(p) {
     var q = 1 - p
-    if (fs[p].mode === "gone" || fs[q].mode === "gone" || fs[p].mode === "fall" || fs[q].mode === "fall") return
+    var out = ["gone", "fall", "derez"]
+    if (out.indexOf(fs[p].mode) >= 0 || out.indexOf(fs[q].mode) >= 0) return
     if (!canAct(p)) { after(0.3, function () { rally(q) }); return }
     if (!discHome(p)) { after(0.2, function () { rally(p) }); return }
     if (fs[q].mode === "climb" || (fs[q].mode === "cling" && fs[q].willClimb)) {
@@ -941,7 +1027,7 @@ Item {
       var local = localPose(p, dt, realDt)
       updateMode(p)
       fi.opacity = fs[p].alpha
-      fi.visible = fs[p].mode !== "gone"
+      fi.visible = fs[p].mode !== "gone" && fs[p].mode !== "derez"
       var S = []
       for (var j = 0; j < 20; j++) S.push(project(toWorld(p, local, j)))
       for (var k = 0; k < limbs.length; k++) {
@@ -979,7 +1065,7 @@ Item {
         d.pos = d.state === "hand" ? handWorld(p) : d.state === "shield" ? shieldWorld(p) : backWorld(p)
         d.trail = d.trail.slice(0, Math.max(0, d.trail.length - 3))     // the streak fades after a catch
       }
-      di.visible = fs[p].mode !== "gone"
+      di.visible = fs[p].mode !== "gone" && fs[p].mode !== "derez"
       di.opacity = d.state === "flight" ? 1 : fs[p].alpha
       var s = project(d.pos), r = 0.3 * cam.F / s[2], view = norm(sub(d.pos, cam.p))
       if (d.state === "flight") {
@@ -998,7 +1084,7 @@ Item {
       var tp = d.trail.map(project)
       for (var g = 0; g < trailLen; g++) {
         var ti = trailItems.itemAt(p * trailLen + g)
-        ti.visible = fs[p].mode !== "gone" && g + 1 < tp.length
+        ti.visible = fs[p].mode !== "gone" && fs[p].mode !== "derez" && g + 1 < tp.length
         if (!ti.visible) continue
         var tw = Math.max(1, 0.06 * cam.F / tp[g][2] * (1 - g / trailLen))
         placeSeg(ti, tp[g], tp[g + 1], tw)
@@ -1006,6 +1092,8 @@ Item {
         ti.z = 1000 - tp[g][2] * 20 - 1
       }
     })
+
+    if (pieces.length) stepPieces(realDt)
 
     for (var n = 0; n < sparkData.length; n++) {
       var sp = sparkItems.itemAt(n), sd = sparkData[n]
