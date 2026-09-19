@@ -58,7 +58,7 @@ pkill -f '[e]ncom-boardroom/server.py' 2>/dev/null || true
 # ── Shell: HUD, clones, bar layout ────────────────────────────────────────
 say "Shell: HUD, workspace nodes, launcher, bar layout"
 run omarchy plugin disable encom.hud >/dev/null 2>&1 || true
-for clone in workspaces menu; do
+for clone in workspaces menu lock; do
   if [[ -d $OMA/plugins/$USER_ID.$clone ]]; then
     run omarchy plugin disable "$USER_ID.$clone" >/dev/null 2>&1 || true
     run omarchy plugin enable "omarchy.$clone" >/dev/null 2>&1 || true
@@ -108,6 +108,7 @@ remove "$HOME/.local/bin/encom-boardroom"
 remove "$HOME/.local/bin/encom-screensaver"
 remove "$HOME/.local/bin/encom-wallpaper"
 remove "$OMA/hooks/post-update.d/encom-plymouth.hook"
+remove "$OMA/hooks/post-update.d/encom-lock.hook"
 remove "$OMA/branding/encom.txt"
 if [[ -n $first ]]; then
   say "Restoring files from ${first/#$HOME/\~}"

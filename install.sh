@@ -223,6 +223,21 @@ json.dump(c, open(path, "w"), indent=2); open(path, "a").write("\n")
 PYEOF
 fi
 
+# ── Lock screen: disc wars behind the password field ─────────────────────
+# A clone of Omarchy's lock with one added scene; Service.qml (the password
+# and fingerprint handling) stays Omarchy's own. encom-lock.hook refreshes the
+# clone from omarchy.lock after every Omarchy update.
+say "Lock screen: disc wars (Omarchy's lock, with the scene added)"
+if [[ ! -d $OMA/plugins/$USER_ID.lock ]]; then run omarchy plugin clone omarchy.lock >/dev/null; fi
+put "$REPO/lock/DiscWars.qml" "$OMA/plugins/$USER_ID.lock/DiscWars.qml"
+put "$REPO/lock/poses.js" "$OMA/plugins/$USER_ID.lock/poses.js"
+put "$REPO/lock/encom-lock-patch.py" "$OMA/plugins/$USER_ID.lock/encom-lock-patch.py"
+put "$REPO/hooks/encom-lock.hook" "$OMA/hooks/post-update.d/encom-lock.hook"
+if (( ! DRY )); then
+  rm -f "$OMA/plugins/$USER_ID.lock/.upstream-sha256"       # force a refresh now
+  bash "$OMA/hooks/post-update.d/encom-lock.hook"
+fi
+
 # ── Hyprland: square corners, rez/derezz animations, cursor ──────────────
 say "Hyprland: square corners, materialize/derezz animations, cursor"
 put "$REPO/hypr/encom.lua" "$CFG/hypr/encom.lua"

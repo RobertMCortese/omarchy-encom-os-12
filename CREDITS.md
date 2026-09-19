@@ -45,6 +45,17 @@ is new code in `lightcycles/` (a shared collision grid, AI, derez and rounds), w
 project and inspired by his. No licence terms apply to his work, but it is credited here all the
 same, with thanks.
 
+## CMU Graphics Lab Motion Capture Database
+
+The lock screen fighters move with motion capture from the CMU Graphics Lab Motion Capture
+Database: subject 79 trial 92 (a frisbee throw), subject 124 trial 9 (a stance) and subject 15
+trial 1 (a sidestep). The database is free to use, including in products, but not to resell as
+data. `lock/poses.js` holds only the joint positions the scene draws, baked by
+`tools/bake-poses.py`. As CMU asks:
+
+> The data used in this project was obtained from mocap.cs.cmu.edu.
+> The database was created with funding from NSF EIA-0196217.
+
 ## three.js
 
 The Light Cycles screensaver runs on [three.js](https://threejs.org) r71 (MIT, © three.js
@@ -57,7 +68,9 @@ arena and stadium are drawn from code and canvas textures; no image assets are u
 Built on [Omarchy](https://omarchy.org) (github.com/basecamp/omarchy). The workspace nodes
 (`shell/workspaces/Workspaces.qml`) are adapted from Omarchy's workspace widget. The chamfered
 launcher is Omarchy's own menu, cloned on your machine by `omarchy plugin clone` and patched by
-`shell/menu/encom-chamfer-patch.py`; this repository does not copy the menu.
+`shell/menu/encom-chamfer-patch.py`; this repository does not copy the menu. The lock screen works
+the same way: Omarchy's lock is cloned on your machine and `lock/encom-lock-patch.py` adds the
+disc wars scene (`lock/DiscWars.qml`, original to this project) to it.
 
 ## DB-IP
 

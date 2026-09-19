@@ -14,6 +14,16 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 - The **Encom-Cyan** cursor: Adwaita's shapes, recoloured with a soft cyan halo.
 - Translucent terminals over the grid, and an ENCOM fastfetch readout.
 
+**The disc wars lock screen**: behind the password field, two original fighters, a teal program and an orange sentinel, duel with identity discs on concentric ring platforms high above the arena floor.
+
+![Lock screen](docs/lock.gif)
+
+- The fighters move with real motion capture (a frisbee throw, a stance and a sidestep from the CMU database), with blocks, flips, dodges and falls built on top of it.
+- Throws are blocked on the defender's own disc, held like a shield in one hand or both. Sometimes they're dodged instead: a sidestep or a side flip, twist or backflip onto another ring, or a duck, sweep kick or split jump in place. Now and then one connects, knocking the fighter back a ring.
+- Discs banked off the ceiling knock out rings. A fighter who loses their footing clings to the next ring's edge, and sometimes climbs back up; otherwise the next shot sends them falling into the void. The rings rise again and the duel goes on.
+- It's all drawn with plain QtQuick shapes through a hand-projected 3D camera. No Qt Quick 3D, no web view, no real lights.
+- It's Omarchy's own lock with one scene added. The password and fingerprint handling are left exactly as Omarchy ships them. An installed post-update hook refreshes the clone from Omarchy's lock after every update. If the scene no longer fits, it switches back to Omarchy's own lock rather than run an out-of-date one.
+
 **The HUD** — etched onto the desktop, below your windows:
 - Chamfered console panels: system ident, live CPU / memory / temperature / battery meters, and an identity disc that tracks CPU load.
 - A system-check boot cascade each time the shell starts.
@@ -96,10 +106,11 @@ cd omarchy-encom-os-12
 | `hud/` | Quickshell service plugin: HUD panels, alerts, idle trigger |
 | `bar/` | Bar widgets and the telemetry probe |
 | `shell/` | Workspace nodes, and the patch that chamfers Omarchy's launcher |
+| `lock/` | The disc wars scene, its baked motion capture (`poses.js`), and the patch that adds it to a clone of Omarchy's lock |
 | `boardroom/` | Monitor server, alert checks, icon resolver, the layer-shell wallpaper and its services, and `patch.py`, which rebuilds the upstream app |
 | `lightcycles/` | The 3-on-3 game: engine, AI, camera and scoreboard (`encom-game.js`), cycles and stadium (`encom-arena.js`), and the pinned three.js version |
 | `hypr/`, `terminal/`, `fastfetch/`, `cursor/` | Look'n'feel pieces |
-| `tools/` | How the logo was traced |
+| `tools/` | How the logo was traced, and how the lock screen's motion capture was baked |
 
 Notes for anyone hacking on it:
 - The HUD is a `service` plugin, so edits to it need `omarchy restart shell`.

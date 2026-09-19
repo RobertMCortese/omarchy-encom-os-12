@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# The ENCOM lock screen is a clone of Omarchy's lock plugin (omarchy.lock)
+# with the disc wars scene added. A clone does not receive Omarchy's updates,
+# and the lock is security code, so after every update: if omarchy.lock has
+# changed, refresh the clone from it and re-apply the scene. If the scene can
+# no longer be applied cleanly, switch back to Omarchy's own lock rather than
+# keep running an out-of-date one.
+#
+# Never fails the update.
+
+src=${OMARCHY_PATH:-/usr/share/omarchy}/shell/plugins/lock
+user_id=${USER:-$(id -un)}
+clone=$HOME/.config/omarchy/plugins/$user_id.lock
+[[ -d $src && -f $clone/encom-lock-patch.py ]] || exit 0
+
+stamp=$clone/.upstream-sha256
+current=$(cd "$src" && cat $(ls | sort) | sha256sum | cut -d' ' -f1)
+[[ -f $stamp && $(<"$stamp") == "$current" ]] && exit 0
+
+echo -e "\e[36mRefreshing the ENCOM lock screen from Omarchy's updated lock...\e[0m"
+# Everything except the clone's own manifest comes fresh from upstream.
+for f in "$src"/*; do
+  [[ $(basename "$f") == manifest.json ]] || cp -f "$f" "$clone/"
+done
+if python3 "$clone/encom-lock-patch.py" >/dev/null; then
+  echo "$current" > "$stamp"
+else
+  echo -e "\e[33mOmarchy's lock changed too much to add the ENCOM scene; using Omarchy's own lock for now.\e[0m" >&2
+  echo -e "\e[33mRe-run the ENCOM installer after it is updated for this Omarchy.\e[0m" >&2
+  omarchy plugin disable "$user_id.lock" >/dev/null 2>&1
+  omarchy plugin enable omarchy.lock >/dev/null 2>&1
+fi
+exit 0
