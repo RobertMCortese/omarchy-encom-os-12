@@ -2,7 +2,7 @@
 
 ## ENCOM Boardroom — Rob Scanlon
 
-The screensaver is **Rob Scanlon's [ENCOM Boardroom](https://www.robscanlon.com/encom-boardroom/)**
+The live wallpaper (and optional screensaver) is **Rob Scanlon's [ENCOM Boardroom](https://www.robscanlon.com/encom-boardroom/)**
 ([github.com/arscan/encom-boardroom](https://github.com/arscan/encom-boardroom)), an HTML5/WebGL
 recreation of the boardroom scene in *Tron: Legacy*. It is used under the MIT licence:
 
@@ -33,6 +33,24 @@ local changes:
 - alert rows
 
 His own "created by @arscan" credit inside the app is left as it is.
+
+## 3dLightCycles — Erich Loftis
+
+The Light Cycles screensaver started as **Erich Loftis's
+[3dLightCycles](https://github.com/erichlof/3dLightCycles)**, a three.js light cycle game after
+*Tron*, which he dedicated to the public domain under
+[CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). The first version here
+patched his game directly. Three-on-three play needed a different engine, so the current version
+is new code in `lightcycles/` (a shared collision grid, AI, derez and rounds), written for this
+project and inspired by his. No licence terms apply to his work, but it is credited here all the
+same, with thanks.
+
+## three.js
+
+The Light Cycles screensaver runs on [three.js](https://threejs.org) r71 (MIT, © three.js
+authors). `install.sh` downloads `three.min.js` from npm at the version in
+`lightcycles/THREE_VERSION` and checks it against the SHA-256 recorded there. The cycles, ribbons,
+arena and stadium are drawn from code and canvas textures; no image assets are used.
 
 ## Omarchy
 

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ENCOM Light Cycles</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #010306; }
+  canvas { display: block; }
+  .screensaver, .screensaver * { cursor: none !important; }
+
+  /* The arena scoreboard: team names, a pip per rider (dark once derezzed)
+     and the round score. */
+  #board {
+    position: fixed; top: 14px; left: 0; right: 0; text-align: center;
+    font: 600 11px/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;
+    letter-spacing: 0.28em; color: #bfe9ff; pointer-events: none; user-select: none;
+  }
+  #board span { opacity: 0.85; margin: 0 10px; }
+  #board .clu { color: #ff8a1c; }
+  #board .program { color: #8fe3ff; }
+  #board b { font-weight: 600; margin: 0 14px; color: #e8f8ff; }
+  #board i {
+    display: inline-block; width: 14px; height: 3px; margin: 0 3px 2px; vertical-align: middle;
+    background: currentColor; box-shadow: 0 0 6px currentColor;
+  }
+  #board i.clu { color: #ff8a1c; }
+  #board i.program { color: #8fe3ff; }
+  #board i.out { opacity: 0.18; box-shadow: none; }
+  /* The side's champion, the rider that searches ahead: a longer bar. */
+  #board i.champ { width: 24px; height: 5px; margin-bottom: 1px; }
+  #board .banner { margin-top: 12px; font-size: 13px; letter-spacing: 0.5em; color: #e8f8ff; }
+</style>
+</head>
+<body>
+<div id="board"></div>
+<script src="three.min.js"></script>
+<script src="encom-arena.js"></script>
+<script src="encom-game.js"></script>
+</body>
+</html>

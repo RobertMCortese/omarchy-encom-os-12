@@ -47,6 +47,12 @@ fi
 say "Screensaver: back to Omarchy's"
 run omarchy-toggle screensaver-off off
 remove "$HOME/.local/state/omarchy/toggles/encom-boardroom-off"
+remove "$HOME/.local/state/omarchy/toggles/encom-screensaver-off"
+say "Wallpaper: stopping the live Boardroom"
+run systemctl --user disable --now encom-wallpaper.service encom-boardroom-server.service 2>/dev/null || true
+remove "$CFG/systemd/user/encom-wallpaper.service"
+remove "$CFG/systemd/user/encom-boardroom-server.service"
+run systemctl --user daemon-reload
 pkill -f '[e]ncom-boardroom/server.py' 2>/dev/null || true
 
 # ── Shell: HUD, clones, bar layout ────────────────────────────────────────
@@ -99,6 +105,8 @@ cut_block "$CFG/foot/foot.ini" "#"
 first=$(ls -d "$STATE"/backup-* 2>/dev/null | sort | head -1 || true)
 # Files that are ours by name are always removed, never restored.
 remove "$HOME/.local/bin/encom-boardroom"
+remove "$HOME/.local/bin/encom-screensaver"
+remove "$HOME/.local/bin/encom-wallpaper"
 remove "$OMA/hooks/post-update.d/encom-plymouth.hook"
 remove "$OMA/branding/encom.txt"
 if [[ -n $first ]]; then
@@ -116,10 +124,11 @@ if [[ -n $first ]]; then
 fi
 
 # ── Cursor, Boardroom, theme ──────────────────────────────────────────────
-say "Cursor, Boardroom and theme files"
+say "Cursor, Boardroom, Light Cycles and theme files"
 run gsettings reset org.gnome.desktop.interface cursor-theme 2>/dev/null || true
 remove "$HOME/.local/share/icons/Encom-Cyan"
 remove "$HOME/.local/share/encom-boardroom"
+remove "$HOME/.local/share/encom-lightcycles"
 remove "$HOME/.cache/encom-boardroom"
 remove "$OMA/themes/encom-os-12"
 

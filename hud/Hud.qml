@@ -165,14 +165,36 @@ Item {
     }
   }
 
-  // ── Boardroom screensaver ───────────────────────────────────────────────
+  // ── Boardroom wallpaper ─────────────────────────────────────────────────
+  // While the live Boardroom is the desktop background (encom-wallpaper),
+  // it already shows this machine's state, and it shares this layer, so the
+  // HUD steps aside. The wallpaper's service creates this flag file while it
+  // runs and removes it when it stops, crashed or not.
+  property bool wallpaperActive: false
+
+  FileView {
+    id: wallpaperFlag
+    path: Quickshell.env("XDG_RUNTIME_DIR") + "/encom-wallpaper.active"
+    printErrors: false
+    onLoaded: root.wallpaperActive = true
+    onLoadFailed: root.wallpaperActive = false
+  }
+  Timer {
+    interval: 3000
+    running: true
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: wallpaperFlag.reload()
+  }
+
+  // ── Screensaver ─────────────────────────────────────────────────────────
   // Omarchy's ttfx screensaver is switched off (omarchy toggle screensaver)
-  // and this opens the ENCOM Boardroom instead, at the same idle timeout and
-  // honouring the same inhibitors. Its window carries the
-  // org.omarchy.screensaver class, so Omarchy's idle service tracks it as its
-  // own screensaver: the lock still fires on schedule, and closing it counts
-  // as activity. The launcher checks stay-awake, lock state and its own
-  // encom-boardroom-off toggle.
+  // and this opens the ENCOM one instead (Light Cycles or the Boardroom), at
+  // the same idle timeout and honouring the same inhibitors. Its window
+  // carries the org.omarchy.screensaver class, so Omarchy's idle service
+  // tracks it as its own screensaver: the lock still fires on schedule, and
+  // closing it counts as activity. The launcher checks stay-awake, lock
+  // state and its own encom-screensaver-off toggle.
   property int screensaverSeconds: 150
 
   FileView {
@@ -215,7 +237,7 @@ Item {
         onIsIdleChanged: {
           console.log("encom.hud: idle=" + isIdle + " after " + root.screensaverSeconds + "s")
           if (isIdle)
-            Quickshell.execDetached(["bash", "-lc", "exec \"$HOME/.local/bin/encom-boardroom\" --screensaver"])
+            Quickshell.execDetached(["bash", "-lc", "exec \"$HOME/.local/bin/encom-screensaver\""])
         }
       }
     }
@@ -306,6 +328,7 @@ Item {
       required property var modelData
 
       screen: modelData
+      visible: !root.wallpaperActive
       color: "transparent"
       anchors { top: true; bottom: true; left: true; right: true }
 

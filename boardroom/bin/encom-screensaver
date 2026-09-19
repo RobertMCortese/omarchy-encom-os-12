@@ -1,0 +1,34 @@
+#!/bin/bash
+# ENCOM screensaver: Light Cycles (default) or the Boardroom, fullscreen,
+# closing on any input or when the session locks.
+#
+#   encom-screensaver            the one chosen in ~/.config/encom-boardroom/config.json
+#                                ("screensaver": "lightcycles" or "boardroom")
+#   encom-screensaver <name>     that one, now
+#
+# The ENCOM HUD service calls this when the session goes idle. Turn it off
+# with:  omarchy-toggle encom-screensaver-off
+
+set -u
+BOARDROOM="$HOME/.local/share/encom-boardroom"
+STATE="$HOME/.local/state/omarchy"
+CONFIG="$HOME/.config/encom-boardroom/config.json"
+LOG="$HOME/.local/state/encom-boardroom/server.log"
+
+site=${1:-}
+if [[ -z $site ]]; then
+  # Idle start: the same conditions Omarchy's own screensaver respects.
+  # (encom-boardroom-off is the toggle's name from before Light Cycles.)
+  [[ -f $STATE/toggles/encom-screensaver-off || -f $STATE/toggles/encom-boardroom-off ]] && exit 0
+  [[ -f $STATE/indicators/stay-awake ]] && exit 0
+  [[ $(omarchy-shell lock isLocked 2>/dev/null) == "true" ]] && exit 0
+  site=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("screensaver", "lightcycles"))' \
+    "$CONFIG" 2>/dev/null || echo lightcycles)
+fi
+
+# One ENCOM window at a time (shared with encom-boardroom).
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/encom-boardroom.lock"
+flock -n 9 || exit 0
+
+mkdir -p "$(dirname "$LOG")"
+exec python3 "$BOARDROOM/server.py" --screensaver --site "$site" 2>>"$LOG"

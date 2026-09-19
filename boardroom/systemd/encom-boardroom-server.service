@@ -1,0 +1,9 @@
+[Unit]
+Description=ENCOM Boardroom monitor server (for the live wallpaper)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/share/encom-boardroom/server.py --serve-only --port 8741
+Restart=on-failure
+RestartSec=5

@@ -4,6 +4,7 @@
 #   ./install.sh               install or update everything
 #   ./install.sh --dry-run     show what would happen, change nothing
 #   ./install.sh --no-plymouth skip the boot splash (it needs sudo)
+#   ./install.sh --no-wallpaper keep a still wallpaper instead of the live Boardroom
 #
 # Every file this changes is copied first into
 # ~/.local/state/omarchy-encom-os-12/backup-<time>/, and uninstall.sh uses
@@ -14,12 +15,14 @@ set -euo pipefail
 REPO=$(cd "$(dirname "$0")" && pwd)
 DRY=0
 PLYMOUTH=ask
+WALLPAPER=yes
 for arg in "$@"; do
   case $arg in
     --dry-run) DRY=1 ;;
+    --no-wallpaper) WALLPAPER=no ;;
     --no-plymouth) PLYMOUTH=no ;;
     --plymouth) PLYMOUTH=yes ;;
-    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 1 ;;
   esac
 done
@@ -27,6 +30,7 @@ done
 CFG=$HOME/.config
 OMA=$CFG/omarchy
 BOARDROOM=$HOME/.local/share/encom-boardroom
+LIGHTCYCLES=$HOME/.local/share/encom-lightcycles
 STATE=$HOME/.local/state/omarchy-encom-os-12
 BACKUP=$STATE/backup-$(date +%Y%m%d-%H%M%S)
 USER_ID=${USER:-$(id -un)}
@@ -104,7 +108,7 @@ if (( ! DRY )); then
   git -C "$TMP/upstream-src" archive "$REV" index.html css images js build | tar -x -C "$TMP/build/upstream"
   echo "$REV" > "$TMP/build/upstream/UPSTREAM_REV"
   sed -n '/^### License/,$p' "$TMP/upstream-src/README.md" > "$TMP/build/upstream/LICENSE"
-  cp "$REPO"/boardroom/{server.py,checks.py,icons.py,patch.py,encom-local.js,encom-local.css,UPSTREAM_REV} "$TMP/build/"
+  cp "$REPO"/boardroom/{server.py,wallpaper.py,checks.py,icons.py,patch.py,encom-local.js,encom-local.css,UPSTREAM_REV} "$TMP/build/"
   mkdir -p "$TMP/build/geo" "$TMP/build/assets"
   cp "$REPO/boardroom/geo/mmdb.py" "$TMP/build/geo/"
   cp "$REPO/boardroom/assets/disc.svg" "$TMP/build/assets/"
@@ -130,6 +134,20 @@ if [[ ! -f $BOARDROOM/geo/dbip-city-lite.mmdb ]] && (( ! DRY )); then
   [[ -f $BOARDROOM/geo/dbip-city-lite.mmdb ]] || warn "Could not download the location database; connections will pin at home."
 fi
 put "$REPO/boardroom/bin/encom-boardroom" "$HOME/.local/bin/encom-boardroom"
+put "$REPO/boardroom/bin/encom-screensaver" "$HOME/.local/bin/encom-screensaver"
+put "$REPO/boardroom/bin/encom-wallpaper" "$HOME/.local/bin/encom-wallpaper"
+
+# ── Light Cycles screensaver ──────────────────────────────────────────────
+say "Light Cycles: the 3-on-3 arena, with three.js r71 (MIT) at a pinned version"
+read -r THREE_VER THREE_SHA < "$REPO/lightcycles/THREE_VERSION"
+if (( ! DRY )); then
+  mkdir -p "$TMP/lc/app"
+  curl -sfL -o "$TMP/lc/app/three.min.js" "https://cdn.jsdelivr.net/npm/three@$THREE_VER/three.min.js"
+  echo "$THREE_SHA  $TMP/lc/app/three.min.js" | sha256sum -c --quiet - \
+    || { echo "three.js download did not match its checksum" >&2; exit 1; }
+  cp "$REPO"/lightcycles/{index.html,encom-arena.js,encom-game.js} "$TMP/lc/app/"
+  put_own "$TMP/lc" "$LIGHTCYCLES"
+fi
 
 # ── Branding: fastfetch logo and screensaver banner from the ENCOM mark ──
 say "Terminal: fastfetch readout and ASCII logo"
@@ -232,9 +250,26 @@ if (( ! DRY )); then
   done
 fi
 
-# ── Screensaver: the Boardroom replaces Omarchy's ttfx screensaver ───────
-say "Screensaver: Boardroom on idle (Omarchy's ttfx screensaver switched off)"
+# ── Screensaver: Light Cycles replaces Omarchy's ttfx screensaver ────────
+say "Screensaver: Light Cycles on idle (Omarchy's ttfx screensaver switched off)"
 run omarchy-toggle screensaver-off on
+
+# ── Live wallpaper: the Boardroom on the desktop layer ───────────────────
+put "$REPO/boardroom/systemd/encom-boardroom-server.service" "$CFG/systemd/user/encom-boardroom-server.service"
+put "$REPO/boardroom/systemd/encom-wallpaper.service" "$CFG/systemd/user/encom-wallpaper.service"
+run systemctl --user daemon-reload
+if [[ $WALLPAPER == yes ]]; then
+  say "Wallpaper: the live Boardroom (WebKitGTK on the layer shell)"
+  need=()
+  for pkg in gtk-layer-shell webkit2gtk-4.1 python-gobject python-cairo; do
+    pacman -Q "$pkg" >/dev/null 2>&1 || need+=("$pkg")
+  done
+  (( ${#need[@]} )) && run omarchy pkg add "${need[@]}"
+  run systemctl --user enable encom-wallpaper.service
+  run systemctl --user restart encom-wallpaper.service
+else
+  say "Wallpaper: live Boardroom skipped; turn it on later with: encom-wallpaper on"
+fi
 
 # ── Boot splash hook ──────────────────────────────────────────────────────
 put "$REPO/hooks/encom-plymouth.hook" "$OMA/hooks/post-update.d/encom-plymouth.hook"

@@ -1,0 +1,17 @@
+[Unit]
+Description=ENCOM Boardroom as the live desktop background
+Requires=encom-boardroom-server.service
+After=encom-boardroom-server.service graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+# The flag file tells the ENCOM HUD to step aside while this runs; it is
+# removed however the service stops.
+ExecStartPre=/usr/bin/touch %t/encom-wallpaper.active
+ExecStart=/usr/bin/python3 %h/.local/share/encom-boardroom/wallpaper.py http://127.0.0.1:8741/#wallpaper:system
+ExecStopPost=/usr/bin/rm -f %t/encom-wallpaper.active
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

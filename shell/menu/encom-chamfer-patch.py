@@ -4,7 +4,9 @@
 <user>.menu is a clone of the built-in omarchy.menu (made by the installer), so Omarchy updates to the
 menu do not reach it. To pick them up: remove this clone, re-run
 `omarchy plugin clone omarchy.menu`, copy this script back into the new clone
-and run it. It edits the card block and the appLibrary binding, and is idempotent.
+and run it. It edits the card block, the appLibrary binding and the apps
+provider; each edit is applied once, so running it again is safe and also
+brings an older patched clone up to date.
 
 The card keeps its BorderSurface for layout, with the stock fill and gradient
 border switched off, and a Canvas behind the content draws the chamfered
@@ -14,13 +16,22 @@ insets, and therefore the whole layout, stay exactly where they were.
 import os
 import sys
 
-MARK = "// ENCOM chamfer"
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Menu.qml")
 src = open(path).read()
+changed = []
 
-if MARK in src:
-    print("already patched")
-    sys.exit(0)
+
+def apply(marker, edits, what):
+    """Apply (old, new) edits unless marker shows they are already in."""
+    global src
+    if marker in src:
+        return
+    for a, b in edits:
+        if a not in src:
+            sys.exit(what + " not found — the upstream menu changed; patch by hand")
+        src = src.replace(a, b, 1)
+    changed.append(what)
+
 
 old = """    BorderSurface {
       id: card
@@ -107,10 +118,7 @@ new = """    BorderSurface {
       }
 """
 
-if old not in src:
-    sys.exit("card block not found — the upstream menu changed; patch by hand")
-
-src = src.replace(old, new, 1)
+apply("// ENCOM chamfer", [(old, new)], "card block")
 
 # ── App-library fallback ─────────────────────────────────────────────────
 # On Omarchy 4.0.4 a cloned menu is handed a shell API whose appLibrary is
@@ -137,10 +145,53 @@ LIB_NEW = """  // ENCOM app-library fallback: prefer the shell's, else use a pri
   }
 """
 
-for a, b, what in ((IMPORT_OLD, IMPORT_NEW, "import line"), (LIB_OLD, LIB_NEW, "appLibrary property")):
-    if a not in src:
-        sys.exit(what + " not found — the upstream menu changed; patch by hand")
-    src = src.replace(a, b, 1)
+apply("// ENCOM app-library fallback", [(IMPORT_OLD, IMPORT_NEW), (LIB_OLD, LIB_NEW)],
+      "appLibrary property")
 
-open(path, "w").write(src)
-print("patched")
+# ── Apps list refresh ────────────────────────────────────────────────────
+# The stock apps provider fills the list once per shell. If that first fill
+# lands before the library has read the desktop entries, the Apps list stays
+# "Nothing here yet" until the shell restarts. Rebuild it on every visit
+# (it is a quick in-memory sort), and while it comes back empty, try again
+# shortly.
+LOAD_OLD = """  function loadProviderForMenu(id) {
+    var entry = root.item(id)
+    if (!entry || !entry.provider || root.providersLoaded[id]) return
+"""
+LOAD_NEW = """  function loadProviderForMenu(id) {
+    var entry = root.item(id)
+    // ENCOM apps refresh: rebuild the app rows on every visit.
+    if (entry && entry.provider === "apps") {
+      root.providersLoaded[id] = true
+      root.mergeAppRows()
+      return
+    }
+    if (!entry || !entry.provider || root.providersLoaded[id]) return
+"""
+MERGE_OLD = """    var rows = root.appLibrary.sortedEntries("")
+"""
+MERGE_NEW = """    var rows = root.appLibrary.sortedEntries("")
+    if (rows.length === 0 && encomAppRetry.tries < 20) encomAppRetry.restart()
+    else encomAppRetry.tries = 0
+"""
+RETRY_OLD = """  Connections {
+    target: root.appLibrary
+"""
+RETRY_NEW = """  Timer {
+    id: encomAppRetry
+    property int tries: 0
+    interval: 500
+    onTriggered: { tries++; root.mergeAppRows() }
+  }
+
+  Connections {
+    target: root.appLibrary
+"""
+apply("// ENCOM apps refresh",
+      [(LOAD_OLD, LOAD_NEW), (MERGE_OLD, MERGE_NEW), (RETRY_OLD, RETRY_NEW)], "apps provider")
+
+if changed:
+    open(path, "w").write(src)
+    print("patched:", ", ".join(changed))
+else:
+    print("already patched")

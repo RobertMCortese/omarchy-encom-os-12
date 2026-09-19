@@ -1,0 +1,17 @@
+#!/bin/bash
+# The live ENCOM Boardroom as the desktop background.
+#
+#   encom-wallpaper on | off | toggle | status
+#
+# It animates only while the desktop is on show and you are on mains power,
+# and otherwise holds its last frame. The ENCOM HUD hides while it runs.
+
+set -u
+unit=encom-wallpaper.service
+case ${1:-status} in
+  on)     systemctl --user enable --now "$unit" ;;
+  off)    systemctl --user disable --now "$unit" encom-boardroom-server.service ;;
+  toggle) if systemctl --user is-active -q "$unit"; then exec "$0" off; else exec "$0" on; fi ;;
+  status) systemctl --user is-active "$unit" ;;
+  *)      echo "usage: encom-wallpaper on|off|toggle|status" >&2; exit 2 ;;
+esac

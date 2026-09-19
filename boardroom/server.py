@@ -22,7 +22,11 @@ Modes:
                             the first input, when the window closes, or when
                             the session locks
   server.py                 same, but a normal app window with no auto-exit
-  server.py --serve-only    just serve on --port (for development)
+  server.py --serve-only    just serve on --port (the desktop wallpaper uses
+                            this, and it is handy for development)
+
+  --site lightcycles        serve the Light Cycles screensaver instead of the
+                            Boardroom: same window handling, no collectors
 """
 import argparse
 import datetime as dt
@@ -44,6 +48,12 @@ import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 APP = HERE / "app"
+SITES = {
+    "boardroom": (APP, "/"),
+    "lightcycles": (pathlib.Path.home() / ".local" / "share" / "encom-lightcycles" / "app",
+                    "/index.html"),
+}
+SITE_DIR = APP
 sys.path.insert(0, str(HERE / "geo"))
 import mmdb  # noqa: E402
 sys.path.insert(0, str(HERE))
@@ -56,11 +66,14 @@ CHROMIUM_PROFILE = pathlib.Path.home() / ".cache" / "encom-boardroom" / "chromiu
 TELEMETRY = pathlib.Path.home() / ".config" / "omarchy" / "bar" / "scripts" / "encom-telemetry"
 
 DEFAULT_CONFIG = {
+    # Which screensaver runs on idle: "lightcycles" or "boardroom"
+    # (read by encom-screensaver).
+    "screensaver": "lightcycles",
     # Where this machine sits on the globe. PST8PDT carries no coordinates,
     # so this is a sensible default; change it to your city.
     "home": {"name": "HOME", "lat": 34.05, "lon": -118.24},
     "sample_seconds": 15,
-    # Streams the screensaver cycles through, and how long each is shown.
+    # Streams the Boardroom screensaver cycles through, and how long each is shown.
     # system: this machine; github: the 2013 replay; wikipedia: live public
     # edits (needs internet, and only connects while that view is showing).
     "cycle": ["system", "github", "wikipedia"],
@@ -696,7 +709,7 @@ DISMISSED = threading.Event()
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
-        super().__init__(*a, directory=str(APP), **kw)
+        super().__init__(*a, directory=str(SITE_DIR), **kw)
 
     def log_message(self, *_):
         pass
@@ -724,9 +737,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "window.encomSystemHistory = " + json.dumps(History.series()) + ";\n"
                 "window.encomConfig = " + json.dumps(cfg) + ";\n"
                 "(function () {\n"
-                "  var m = /^#screensaver(?::(\\w+))?/.exec(location.hash);\n"
+                "  var m = /^#(screensaver|wallpaper)(?::(\\w+))?/.exec(location.hash);\n"
                 "  var c = window.encomConfig.cycle;\n"
-                "  var s = m ? (c.indexOf(m[1]) >= 0 ? m[1] : c[0]) : 'all';\n"
+                "  var s = !m ? 'all' : m[1] === 'wallpaper' ? (m[2] || 'system')\n"
+                "        : (c.indexOf(m[2]) >= 0 ? m[2] : c[0]);\n"
                 "  window._esPath = '/events.js?stream=' + s;\n"
                 "})();\n"
             ).encode()
@@ -878,7 +892,14 @@ def main():
     ap.add_argument("--screensaver", action="store_true")
     ap.add_argument("--serve-only", action="store_true")
     ap.add_argument("--port", type=int, default=0)
+    ap.add_argument("--site", choices=sorted(SITES), default="boardroom")
     args = ap.parse_args()
+
+    global SITE_DIR
+    SITE_DIR, page = SITES[args.site]
+    if not (SITE_DIR / page.lstrip("/")).exists() and page != "/":
+        sys.exit(f"{args.site} is not installed ({SITE_DIR})")
+    monitor = args.site == "boardroom"
 
     if args.screensaver and locked():
         return
@@ -889,19 +910,21 @@ def main():
     PORT = port
     # Build the icon indexes now, off the event path, so the first events
     # are not held up by a one-second scan of the icon themes.
-    threading.Thread(target=ICONS._ensure, daemon=True, name="icons").start()
+    if monitor:
+        threading.Thread(target=ICONS._ensure, daemon=True, name="icons").start()
     threading.Thread(target=server.serve_forever, daemon=True, name="http").start()
 
-    for fn in (net_collector, window_collector, journal_collector, pacman_collector,
-               udev_collector, sample_collector, wikipedia_collector, alert_collector):
-        collector(fn).start()
+    if monitor:
+        for fn in (net_collector, window_collector, journal_collector, pacman_collector,
+                   udev_collector, sample_collector, wikipedia_collector, alert_collector):
+            collector(fn).start()
 
     def stop(*_):
         STOP.set()
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
 
-    url = f"http://127.0.0.1:{port}/" + ("#screensaver" if args.screensaver else "")
+    url = f"http://127.0.0.1:{port}{page}" + ("#screensaver" if args.screensaver else "")
     log("serving", url)
 
     if not args.serve_only:
@@ -935,7 +958,8 @@ def main():
         for child in CHILDREN:
             if child.poll() is None:
                 child.terminate()
-        History.flush()
+        if monitor:
+            History.flush()
         server.shutdown()
 
 
