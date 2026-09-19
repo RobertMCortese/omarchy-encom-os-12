@@ -40,7 +40,7 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 Needs Omarchy 4.x with Chromium. On a stock install every other dependency is already present, except two small cursor-building tools, which the installer offers to add.
 
 ```bash
-git clone https://github.com/<you>/omarchy-encom-os-12
+git clone https://github.com/RobertMCortese/omarchy-encom-os-12
 cd omarchy-encom-os-12
 ./install.sh
 ```
