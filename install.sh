@@ -111,7 +111,7 @@ if (( ! DRY )); then
   cp "$REPO"/boardroom/{server.py,wallpaper.py,checks.py,icons.py,patch.py,encom-local.js,encom-local.css,UPSTREAM_REV} "$TMP/build/"
   mkdir -p "$TMP/build/geo" "$TMP/build/assets"
   cp "$REPO/boardroom/geo/mmdb.py" "$TMP/build/geo/"
-  cp "$REPO/boardroom/assets/disc.svg" "$TMP/build/assets/"
+  cp "$REPO"/boardroom/assets/{disc.svg,alert-portrait.gif} "$TMP/build/assets/"
   rsvg-convert -w 256 -h 256 -o "$TMP/build/assets/disc.png" "$REPO/boardroom/assets/disc.svg"
   python3 "$TMP/build/patch.py"
   # Keep an existing location database rather than downloading 60 MB again.

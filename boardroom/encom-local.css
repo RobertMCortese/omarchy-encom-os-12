@@ -29,19 +29,22 @@
 /* ── Live list: alert and resolved rows ─────────────────────────────────── */
 .interaction-data.encom-alert li,
 .interaction-data.encom-alert .interaction-popular {
-    color: #ff8c21 !important;
+    color: #a8ecff !important;
+    text-shadow: 0 0 6px rgba(111, 195, 223, 0.8);
 }
 .interaction-data.encom-ok li {
     color: #3ddbb4 !important;
 }
 
-/* ── SYSTEM ALERT box ───────────────────────────────────────────────────── */
+/* ── SYSTEM ALERT box ─────────────────────────────────────────────────────
+   ENCOM teal, with a comms portrait on the left (Star Fox style): the
+   portrait window opens first, then the message beside it. */
 #encom-alerts {
     position: fixed;
     left: 50%;
     bottom: 26px;
     transform: translateX(-50%);
-    width: min(760px, 70vw);
+    width: min(820px, 76vw);
     z-index: 1000;
     font-family: "JetBrainsMono Nerd Font", monospace;
     pointer-events: none;
@@ -49,11 +52,16 @@
 #encom-alerts[hidden] { display: none; }
 #encom-alerts .frame {
     position: relative;
-    padding: 12px 18px 12px 18px;
-    background: rgba(12, 5, 0, 0.88);
-    border: 1px solid #ff8c21;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 18px 12px 12px;
+    background: rgba(2, 12, 16, 0.9);
+    border: 1px solid #6fc3df;
     clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
-    box-shadow: 0 0 18px rgba(255, 140, 33, 0.35);
+    box-shadow: 0 0 18px rgba(111, 195, 223, 0.3);
+    animation: encom-alert-open 0.35s ease-out both;
+    animation-delay: 0.25s;
 }
 #encom-alerts .frame::before {
     /* The bright tab, as on the HUD panels. */
@@ -61,18 +69,56 @@
     position: absolute;
     top: 0; left: 12px;
     width: 70px; height: 2px;
-    background: #ffb347;
+    background: #a8ecff;
 }
+
+/* The portrait: the animated feed in its own chamfered window, with faint
+   scanlines and a channel label, opening like a comms link. */
+#encom-alerts .portrait {
+    position: relative;
+    flex: none;
+    width: 125px;
+    height: 96px;
+    border: 1px solid #a8ecff;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    background: #02141b;
+    box-shadow: inset 0 0 12px rgba(111, 195, 223, 0.35);
+    animation: encom-portrait-open 0.3s ease-out both;
+}
+#encom-alerts .portrait img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+#encom-alerts .portrait::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(to bottom, rgba(2, 20, 27, 0) 0 2px, rgba(2, 20, 27, 0.28) 2px 3px);
+}
+#encom-alerts .portrait .channel {
+    position: absolute;
+    left: 5px; bottom: 3px;
+    z-index: 1;
+    font-size: 8px;
+    letter-spacing: 0.25em;
+    color: #a8ecff;
+    text-shadow: 0 0 4px #02141b;
+}
+#encom-alerts .body { min-width: 0; flex: 1; }
+
 #encom-alerts .head {
-    color: #ff8c21;
+    color: #a8ecff;
     font-size: 13px;
     font-weight: bold;
     letter-spacing: 0.35em;
     margin-bottom: 6px;
+    text-shadow: 0 0 8px rgba(111, 195, 223, 0.7);
     animation: encom-alert-pulse 1.4s ease-in-out infinite;
 }
 #encom-alerts .row {
-    color: #ffd07a;
+    color: #cfefff;
     font-size: 12px;
     letter-spacing: 0.04em;
     line-height: 1.55;
@@ -83,10 +129,18 @@
 #encom-alerts .row .lvl {
     display: inline-block;
     min-width: 46px;
-    color: #ff8c21;
+    color: #6fc3df;
 }
-#encom-alerts .row.crit .lvl { color: #ff6b3d; }
+#encom-alerts .row.crit .lvl { color: #ffffff; text-shadow: 0 0 6px #6fc3df; }
 @keyframes encom-alert-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.45; }
+}
+@keyframes encom-portrait-open {
+    from { transform: scaleY(0.04); filter: brightness(3); }
+    to   { transform: scaleY(1); filter: none; }
+}
+@keyframes encom-alert-open {
+    /* Same six points as the chamfer, gathered at the portrait's edge. */
+    from { clip-path: polygon(0 0, 150px 0, 150px 16px, 150px 100%, 16px 100%, 0 calc(100% - 16px)); }
 }

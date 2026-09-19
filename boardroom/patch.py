@@ -159,6 +159,7 @@ def main():
     index.write_text(patch_html(index.read_text()))
     shutil.copy(HERE / "encom-local.js", APP / "encom-local.js")
     shutil.copy(HERE / "encom-local.css", APP / "encom-local.css")
+    shutil.copy(HERE / "assets" / "alert-portrait.gif", APP / "encom-portrait.gif")
     print("app/ built from upstream", (UPSTREAM / "UPSTREAM_REV").read_text().strip()[:12])
 
 

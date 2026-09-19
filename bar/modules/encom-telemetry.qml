@@ -197,7 +197,7 @@ Item {
       visible: root.alerts.length > 0
       anchors.verticalCenter: parent.verticalCenter
       text: "!" + (root.alerts.length > 1 ? root.alerts.length : "")
-      color: root.orange
+      color: root.cyanHi                                  // alerts are ENCOM teal
       font.family: root.fontFamily
       font.pixelSize: 11
       font.bold: true

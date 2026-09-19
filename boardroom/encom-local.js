@@ -21,7 +21,11 @@ function encomAlerts() {
   var box = document.createElement("div");
   box.id = "encom-alerts";
   box.hidden = true;
-  box.innerHTML = '<div class="frame"><div class="head">SYSTEM ALERT</div><div class="rows"></div></div>';
+  box.innerHTML =
+    '<div class="frame">' +
+      '<div class="portrait"><img src="encom-portrait.gif" alt=""><span class="channel">CH-12</span></div>' +
+      '<div class="body"><div class="head">SYSTEM ALERT</div><div class="rows"></div></div>' +
+    '</div>';
   document.body.appendChild(box);
   var rows = box.querySelector(".rows");
   var active = {};
@@ -63,20 +67,27 @@ if (document.body) encomAlerts();
 else document.addEventListener("DOMContentLoaded", encomAlerts);
 
 (function screensaver() {
-  var match = /^#screensaver(?::(\w+))?/.exec(location.hash);
+  // #screensaver[:stream] rotates and closes on input; #wallpaper[:stream]
+  // is the desktop background: it opens one stream and stays.
+  var match = /^#(screensaver|wallpaper)(?::(\w+))?/.exec(location.hash);
   if (!match) return;
+  var wallpaper = match[1] === "wallpaper";
 
   var cfg = window.encomConfig || {};
   var cycle = (cfg.cycle && cfg.cycle.length) ? cfg.cycle : ["system"];
   var seconds = Math.max(30, Number(cfg.cycle_seconds) || 120);
-  var current = cycle.indexOf(match[1]) >= 0 ? match[1] : cycle[0];
+  var requested = match[2];
+  var current = wallpaper ? (requested || "system")
+                          : (cycle.indexOf(requested) >= 0 ? requested : cycle[0]);
 
   // Stream name -> upstream folder id ("system" reuses the Test Stream slot).
   var FOLDERS = { system: "lt-launch-test", github: "lt-launch-github", wikipedia: "lt-launch-wikipedia" };
 
-  var style = document.createElement("style");
-  style.textContent = "*, *::before, *::after { cursor: none !important; }";
-  document.head.appendChild(style);
+  if (!wallpaper) {
+    var style = document.createElement("style");
+    style.textContent = "*, *::before, *::after { cursor: none !important; }";
+    document.head.appendChild(style);
+  }
 
   var tries = 0;
   var launcher = setInterval(function () {
@@ -90,6 +101,9 @@ else document.addEventListener("DOMContentLoaded", encomAlerts);
       clearInterval(launcher);
     }
   }, 250);
+
+  // The wallpaper never rotates or closes; everything below is screensaver-only.
+  if (wallpaper) return;
 
   if (cycle.length > 1) {
     setTimeout(function () {

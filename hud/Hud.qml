@@ -20,6 +20,8 @@ Item {
   readonly property color cyanHi:  "#a8ecff"
   readonly property color cyanDim: "#1b4d5e"
   readonly property color orange:  "#ff8c21"
+  // Alerts are ENCOM teal, as in the Boardroom; orange stays for load warnings.
+  readonly property color alert:   "#a8ecff"
 
   readonly property string mono: "JetBrainsMono Nerd Font"
 
@@ -69,6 +71,7 @@ Item {
   }
 
   function statusColor() {
+    if (alerts.length) return alert
     return statusWord() === "NOMINAL" ? cyan : orange
   }
 
@@ -458,8 +461,8 @@ Item {
         opacity: root.booting ? 0 : 1
         Behavior on opacity { NumberAnimation { duration: 600 } }
 
-        stroke: root.orange
-        tabStroke: "#ffb347"
+        stroke: root.alert
+        tabStroke: "#ffffff"
         strokeAlpha: 0.9
         padding: 11
         chamfer: 11
@@ -473,7 +476,7 @@ Item {
 
           Text {
             text: "SYSTEM ALERT"
-            color: root.orange
+            color: root.alert
             font.family: root.mono
             font.pixelSize: 11
             font.bold: true
@@ -489,14 +492,14 @@ Item {
               spacing: 7
               Text {
                 text: modelData.level
-                color: modelData.level === "CRIT" ? "#ff6b3d" : root.orange
+                color: modelData.level === "CRIT" ? "#ffffff" : root.cyan
                 font.family: root.mono
                 font.pixelSize: 9
                 width: 30
               }
               Text {
                 text: String(modelData.who).toUpperCase() + "  " + modelData.title
-                color: "#ffd07a"
+                color: "#cfefff"
                 font.family: root.mono
                 font.pixelSize: 9
                 width: 210
@@ -508,7 +511,7 @@ Item {
           Text {
             visible: root.alerts.length > 4
             text: "+" + (root.alerts.length - 4) + " MORE"
-            color: root.orange
+            color: root.cyan
             opacity: 0.7
             font.family: root.mono
             font.pixelSize: 9

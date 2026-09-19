@@ -42,7 +42,7 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 - Silent. It closes on any key or mouse movement, and the screen still locks on schedule behind it.
 - Prefer the Boardroom as the screensaver? Set `"screensaver": "boardroom"` (see below). It then rotates through SYSTEM, GITHUB and WIKIPEDIA.
 
-**Alerts**: disk nearly full, sustained heat, low battery, memory pressure, failed services and out-of-memory kills. They show as an orange **!** on the bar (visible over windows), on the HUD, and in the Boardroom.
+**Alerts**: disk nearly full, sustained heat, low battery, memory pressure, failed services and out-of-memory kills. They show in ENCOM teal: a **!** on the bar (visible over windows), a SYSTEM ALERT panel on the HUD, and in the Boardroom a SYSTEM ALERT box with an animated comms portrait, Star Fox style.
 
 | | |
 |---|---|
