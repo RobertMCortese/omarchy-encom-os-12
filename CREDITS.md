@@ -83,3 +83,7 @@ only while that view is on screen. Edit content is © its contributors under CC 
 `theme/encom-os-12/logo/` was traced (see `tools/make-logo.sh`) from the reference image on the
 [Tron wiki](https://tron.fandom.com/wiki/ENCOM). This is an unofficial fan project, not affiliated
 with or endorsed by Disney; the logo is not covered by this repository's MIT licence.
+
+The comms portrait on the Boardroom's alert box (`boardroom/assets/alert-portrait.gif`) is a short
+clip of Marv, Sam Flynn's Boston terrier, from *Tron: Legacy* (© Disney), reduced to 64 colours. It
+is included as fan use and, like the logo, is not covered by this repository's MIT licence.
