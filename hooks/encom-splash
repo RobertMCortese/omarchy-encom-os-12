@@ -16,14 +16,12 @@ theme=${1:-}
 if [[ -z $theme ]]; then
   theme=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null || true)
 fi
-case $theme in
-  tron-legacy|clu|tron-1982|tron-uprising|tron-2-0|dillinger-systems|encom-*) ;;
-  *) echo "The current theme ($theme) is not one of ours; name one instead:" >&2
-     echo "  encom-splash tron-legacy" >&2
-     exit 1 ;;
-esac
-
+[[ -n $theme ]] || { echo "No current theme to take the splash from." >&2; exit 1; }
 dir=$(omarchy-theme-dir "$theme" 2>/dev/null) || { echo "No such theme: $theme" >&2; exit 1; }
+# Ours are the ones carrying a palette and a mark for the splash; naming them
+# here instead would mean editing this every time one is added, and an
+# installed copy that had missed one would refuse to run.
+[[ -f $dir/encom.json ]] || { echo "$theme is not one of ours (no encom.json)." >&2; exit 1; }
 [[ -f $dir/unlock.png ]] || { echo "$theme has no unlock.png to put on the splash" >&2; exit 1; }
 
 if cmp -s "$dir/unlock.png" /usr/share/plymouth/themes/omarchy/logo.png; then

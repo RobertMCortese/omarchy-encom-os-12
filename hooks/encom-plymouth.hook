@@ -12,13 +12,16 @@
 #
 # Never fails the update: a boot splash is not worth aborting an upgrade over.
 
+# Ours are the themes carrying a palette; anything else falls back to the
+# base theme rather than being listed by name here.
 current=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
-case $current in
-  tron-legacy|clu|tron-1982|tron-uprising|tron-2-0|dillinger-systems|encom-*) theme=$current ;;
-  *)                                                   theme=tron-legacy ;;
-esac
-
-theme_dir=$(omarchy-theme-dir "$theme" 2>/dev/null) || exit 0
+theme_dir=$(omarchy-theme-dir "$current" 2>/dev/null)
+if [[ -n $current && -f $theme_dir/encom.json ]]; then
+  theme=$current
+else
+  theme=tron-legacy
+  theme_dir=$(omarchy-theme-dir "$theme" 2>/dev/null) || exit 0
+fi
 logo=$theme_dir/unlock.png
 [[ -f $logo ]] || exit 0
 
