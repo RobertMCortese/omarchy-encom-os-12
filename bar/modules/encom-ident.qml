@@ -45,11 +45,28 @@ Item {
 
     // The current theme's wordmark on a horizontal bar; the disc sigil stays
     // for vertical bars, which are too narrow for the wide logo. Every theme
-    // keeps its mark at logo/mark.svg, so this follows a theme switch.
+    // keeps its mark at logo/mark.svg.
+    //
+    // That path is the same for every theme, so the image cache hands back
+    // whichever mark was loaded first and the bar keeps wearing the old
+    // theme's logo. Caching is off, and the source is cleared and set again
+    // whenever the palette changes, which is what a theme switch does.
     Image {
+      id: mark
       visible: !root.vertical
       anchors.verticalCenter: parent.verticalCenter
-      source: "file://" + Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/logo/mark.svg"
+      cache: false
+      function refresh() {
+        var path = "file://" + Quickshell.env("HOME")
+                 + "/.local/state/omarchy/current/theme/logo/mark.svg"
+        source = ""
+        source = path
+      }
+      Component.onCompleted: refresh()
+      Connections {
+        target: root
+        function onEncomChanged() { mark.refresh() }
+      }
       height: 12
       width: 52
       fillMode: Image.PreserveAspectFit

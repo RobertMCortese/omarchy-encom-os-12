@@ -440,9 +440,24 @@ Item {
             bottomPadding: 14
             // The current theme's wordmark, traced to SVG and kept at
             // logo/mark.svg in every theme. Rendered at 2x for crisp edges.
+            // Every theme's mark lives at the same path, so the cache is off
+            // and the source is reloaded on a palette change; otherwise the
+            // first theme's logo stays up through every switch after it.
             Image {
+              id: hudMark
               anchors.verticalCenter: parent.verticalCenter
-              source: "file://" + Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/logo/mark.svg"
+              cache: false
+              function refresh() {
+                var path = "file://" + Quickshell.env("HOME")
+                         + "/.local/state/omarchy/current/theme/logo/mark.svg"
+                source = ""
+                source = path
+              }
+              Component.onCompleted: refresh()
+              Connections {
+                target: root
+                function onEncomChanged() { hudMark.refresh() }
+              }
               height: 18
               width: 77
               fillMode: Image.PreserveAspectFit
