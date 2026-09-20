@@ -21,6 +21,12 @@
     clu:     { name: P.sideBName || "CLU", core: P.sideBHi || "#fff1d6", glow: P.sideB || "#ff8a1c" },
     program: { name: P.sideAName || "PROGRAMS", core: P.sideAHi || "#f2feff", glow: P.sideA || "#8fe3ff" },
   };
+  // The 1982 themes use the pieces that came with 3dLightCycles — its arena
+  // wall panels, its cycle model and its light trail — instead of the ones
+  // drawn here for the Legacy arena.
+  var CLASSIC = !!P.classic;
+  var classicCycle = null, classicTrail = null;
+
   var OUTLINE = P.accentHi || "#bfe9ff";       // stadium linework
   var GRID = P.accent || "#5ab4dc";            // the floor grid
 
@@ -97,6 +103,12 @@
   });
 
   function ribbonMaterial(team) {
+    if (classicTrail) {
+      return new THREE.MeshBasicMaterial({
+        map: classicTrail, color: team.glow, transparent: true, depthWrite: false,
+        blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      });
+    }
     return new THREE.MeshBasicMaterial({
       map: ribbonTexture(team), transparent: true, opacity: 1, depthWrite: false,
       blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
@@ -171,6 +183,42 @@
   // same size on screen however far back the camera is.
   function bike(team) {
     var root = new THREE.Object3D();
+    if (classicCycle) {
+      var body = classicCycle.mesh.clone();
+      body.scale.setScalar(classicCycle.scale);
+      body.rotation.y = classicCycle.turn;
+      body.position.y = classicCycle.lift * classicCycle.scale;
+      // Its own materials, recoloured for the side it rides for.
+      body.traverse(function (part) {
+        if (!part.material) return;
+        part.material = part.material.clone();
+        if (part.material.color) part.material.color.set(team.glow);
+        if (part.material.emissive) part.material.emissive.set(team.glow).multiplyScalar(0.18);
+        if (part.material.specular) part.material.specular.set(team.core);
+      });
+      root.add(body);
+      // The same pool of light on the floor and the same on-screen marker
+      // the arena's own cycles carry, so everything downstream still works.
+      var cpool = new THREE.Mesh(
+        new THREE.PlaneBufferGeometry(4, 6.5),
+        new THREE.MeshBasicMaterial({ map: glowTexture, color: team.glow, transparent: true,
+                                      opacity: 0.55, depthWrite: false,
+                                      blending: THREE.AdditiveBlending }));
+      cpool.rotation.x = -Math.PI / 2;
+      cpool.position.y = 0.04;
+      root.add(cpool);
+
+      var cmarkGeometry = new THREE.Geometry();
+      cmarkGeometry.vertices.push(new THREE.Vector3(0, 0.8, 0));
+      var cmark = new THREE.PointCloud(cmarkGeometry, new THREE.PointCloudMaterial({
+        size: 22, sizeAttenuation: false, map: glowTexture, color: team.glow, transparent: true,
+        opacity: 1, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+      }));
+      root.add(cmark);
+
+      root.userData = { parts: [body], pool: cpool, marker: cmark };
+      return root;
+    }
     var parts = [
       new THREE.Mesh(PARTS.rider, glossy(1)),
       new THREE.Mesh(PARTS.body, glossy(1)),
@@ -284,6 +332,30 @@
     polyline(roundedRect(R - 3, 6, 0.05, 6), dimLineMaterial);   // the inner lane line
     lamps(along(roundedRect(R + 1, 0.01, WALL + 0.3, 1), 6), 1.6, 0.9);
 
+    // The 1982 arena's wall panels: the texture that came with Erich
+    // Loftis's 3dLightCycles (CC0), which this arena started from. One strip
+    // of the atlas per wall, as his code had it. Only a theme that asks for
+    // them gets them; the rest keep the plain dark barrier.
+    if (CLASSIC) {
+      var PANEL = 7.2;
+      [[0, -(R + 1.15), 0], [0, R + 1.15, Math.PI],
+       [R + 1.15, 0, -Math.PI / 2], [-(R + 1.15), 0, Math.PI / 2]
+      ].forEach(function (p, i) {
+        var tex = THREE.ImageUtils.loadTexture("arenaWalls2.png");
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.offset.set(0, [0.765, 0.265, 0.5, 0][i]);
+        tex.repeat.set(1, 0.225);
+        tex.anisotropy = renderer.getMaxAnisotropy();
+        var panel = new THREE.Mesh(
+          new THREE.PlaneBufferGeometry(2 * R + 2.4, PANEL),
+          new THREE.MeshBasicMaterial({ map: tex }));
+        panel.position.set(p[0], PANEL / 2 + 0.02, p[1]);
+        panel.rotation.y = p[2];
+        group.add(panel);
+      });
+    }
+
     // Tiers of stands stepping up and back, drawn as outlines with ribs
     // between them, and a lamp row on every other tier.
     var tiers = [], TIERS = 6;
@@ -347,8 +419,31 @@
     return group;
   }
 
+  // Fetches whatever the theme needs before the match starts, so no cycle
+  // is ever built before its model is here. Without a classic theme, or if
+  // the load fails, the arena's own cycles stand in and play begins at once.
+  function preload(done) {
+    if (!CLASSIC || !THREE.ObjectLoader) return done();
+    var waiting = 2, failed = false;
+    function step() { if (--waiting <= 0) done(); }
+    classicTrail = THREE.ImageUtils.loadTexture("classic-trail.png", undefined, step, step);
+    new THREE.ObjectLoader().load("classic-cycle.json", function (loaded) {
+      // The model arrives at its own size and facing; normalise it to the
+      // length and heading the game expects (front towards -Z).
+      var mesh = loaded.children && loaded.children.length === 1 ? loaded.children[0] : loaded;
+      var box = new THREE.Box3().setFromObject(mesh);
+      var size = box.size();
+      var along = Math.max(size.x, size.z);
+      var turn = size.x > size.z ? Math.PI / 2 : 0;
+      classicCycle = { mesh: mesh, scale: 6.2 / (along || 1), turn: turn,
+                       lift: -box.min.y, drop: (box.min.y + box.max.y) / 2 };
+      step();
+    }, undefined, step);
+  }
+
   window.EncomArena = {
     TEAM: TEAM, build: build, bike: bike, ribbonMaterial: ribbonMaterial,
+    preload: preload, classic: CLASSIC,
     glowTexture: glowTexture, derezTexture: derezTexture,
   };
 })();

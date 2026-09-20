@@ -206,6 +206,8 @@ def build(name):
     palette = json.loads(swap((BASE / "encom.json").read_text(), mapping))
     palette["portrait"] = PORTRAIT[name]
     palette["lockScene"] = LOCK_SCENE.get(name, "duel")
+    if name in CLASSIC:
+        palette["classic"] = True
     palette.update(SIDES.get(name, {}))
     (out / "encom.json").write_text(json.dumps(palette, indent=2) + "\n")
 
@@ -218,6 +220,10 @@ def build(name):
 
 # The lock screen scene: the disc duel, or 1982's digitiser.
 LOCK_SCENE = {"encom-tron-82": "digitise"}
+# Themes that use the 1982 game's own pieces — the arena wall panels, the
+# classic cycle model and its light trails — rather than our Legacy-era
+# ones. They came with 3dLightCycles, which this screensaver started from.
+CLASSIC = {"encom-tron-82"}
 PORTRAIT = {"encom-clu": "sentinel", "encom-ares": "glitch", "encom-tron-82": "polyhedron"}
 
 # The two sides in Light Cycles and the disc duel. By default they are the

@@ -147,7 +147,8 @@ if (( ! DRY )); then
   curl -sfL -o "$TMP/lc/app/three.min.js" "https://cdn.jsdelivr.net/npm/three@$THREE_VER/three.min.js"
   echo "$THREE_SHA  $TMP/lc/app/three.min.js" | sha256sum -c --quiet - \
     || { echo "three.js download did not match its checksum" >&2; exit 1; }
-  cp "$REPO"/lightcycles/{index.html,encom-arena.js,encom-game.js} "$TMP/lc/app/"
+  cp "$REPO"/lightcycles/{index.html,encom-arena.js,encom-game.js,arenaWalls2.png,\
+                          classic-cycle.json,classic-trail.png} "$TMP/lc/app/"
   put_own "$TMP/lc" "$LIGHTCYCLES"
 fi
 

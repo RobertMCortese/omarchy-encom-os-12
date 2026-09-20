@@ -83,7 +83,17 @@ The same desktop comes in four colours. Everything above follows the one you pic
 
 Switch with Omarchy's own theme menu, where they're listed as *Encom Os 12*, *Encom Clu*, *Encom Ares* and *Encom Tron 82*, or with `omarchy theme set "Encom Ares"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
 
-**1982 goes further.** The light cycles go back to the original game's blue against yellow (kept 3-on-3, with our AI). And the password screen is a different scene: not the disc duel but **the transfer**, our own take on the ride from the real world into the game world that Robert Abel & Associates animated for the first film. Working from the published storyboard frames, the language there is kaleidoscope: quilts of fine straight lines mirrored twenty-four ways and folding into a new figure every few seconds, a hot rosette turning at the centre of them, soft beams washing outward, and one warm cluster of fragments — the traveller — tumbling through the middle, the only thing in frame that isn't the grid's own colour. Four movements come round in turn. Nothing is traced from the film: it's a mesh of points drifting in one wedge and mirrored, drawn a frame at a time.
+**1982 goes further.** The light cycles go back to the original game's blue against yellow, and to the pieces that came with the game this screensaver started from: its arena wall panels, its classic cycle model and its light trails, in place of our Legacy-era ones. (One palette key, `classic`, turns all three on.)
+
+And the password screen is a different scene: not the disc duel but **the transfer**, our own recreation of the ride from the real world into the game world that the first film opens the grid with. Five movements on a 64-second loop, all wireframe, all generated:
+
+1. **The kaleidoscope** — a field of short lines reflected across a grid of mirrors, folding into a new pattern as it drifts, working through teal, red, pale violet, purple and blue
+2. **The tunnel** — rings of a polygon, each turned further than the last, flown down the middle of a curving path the camera banks into; grid-ruled tetromino plates tumble past and it ends on nested square frames
+3. **The field** — the port opens onto sheets of board stacked one behind another, flown through: traces, dot rows, dot matrix, vias and beads of light running along tracks, the camera panning and spinning
+4. **The arrival** — high over a triangulated world with those same plates floating as clouds and red beams standing off the dark cities; down through them, over ground that rises and falls, in towards the one green beam
+5. **The C** — a city of extruded blocks with canyons between them around the structure that throws the beam; the camera locks onto it, tips down as it passes over, and goes out through a green kaleidoscope that hands back to the first movement
+
+The 3D is hand-rolled — a camera basis, a perspective divide and near-plane clipping — because the flat vector look wants nothing more. Every edge is one plain QtQuick rectangle from a fixed pool, so a frame costs the same whatever is on screen, and it runs at 30 fps, as its source did at 24.
 
 ![The 1982 lock screen: the digitiser](docs/lock-82.gif)
 
@@ -143,7 +153,7 @@ cd omarchy-encom-os-12
 | `shell/` | Workspace nodes, and the patch that chamfers Omarchy's launcher |
 | `lock/` | The disc wars scene, the 1982 digitiser (`Digitize.qml`), the baked motion capture (`poses.js`), and the patch that adds the theme's scene to a clone of Omarchy's lock |
 | `boardroom/` | Monitor server, alert checks, icon resolver, the layer-shell wallpaper and its services, and `patch.py`, which rebuilds the upstream app |
-| `lightcycles/` | The 3-on-3 game: engine, AI, camera and scoreboard (`encom-game.js`), cycles and stadium (`encom-arena.js`), and the pinned three.js version |
+| `lightcycles/` | The 3-on-3 game: engine, AI, camera and scoreboard (`encom-game.js`), cycles and stadium (`encom-arena.js`), the pinned three.js version, and the original game's arena walls, cycle model and trail (CC0) for the 1982 theme |
 | `hypr/`, `terminal/`, `fastfetch/`, `cursor/` | Look'n'feel pieces |
 | `tools/` | The theme and portrait generators, how the logo was traced, and how the lock screen's motion capture was baked |
 

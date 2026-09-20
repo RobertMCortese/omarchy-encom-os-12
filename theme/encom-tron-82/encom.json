@@ -14,5 +14,6 @@
   "sideB": "#ffbe00",
   "sideBHi": "#fff3cf",
   "portrait": "polyhedron",
-  "lockScene": "digitise"
+  "lockScene": "digitise",
+  "classic": true
 }

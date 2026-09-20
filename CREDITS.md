@@ -45,6 +45,17 @@ is new code in `lightcycles/` (a shared collision grid, AI, derez and rounds), w
 project and inspired by his. No licence terms apply to his work, but it is credited here all the
 same, with thanks.
 
+Three of his files are shipped as they are, for the 1982 theme, which asks for the pieces the
+original game had rather than the Legacy-era ones drawn here:
+
+| File | What |
+|---|---|
+| `lightcycles/arenaWalls2.png` | The arena wall panels |
+| `lightcycles/classic-cycle.json` | The classic 1982 light cycle model |
+| `lightcycles/classic-trail.png` | The light trail |
+
+They are CC0, so no terms attach, and the thanks stand.
+
 ## CMU Graphics Lab Motion Capture Database
 
 The lock screen fighters move with motion capture from the CMU Graphics Lab Motion Capture

@@ -681,8 +681,10 @@
   window.encomStep = function (n) { for (var i = 0; i < n; i++) update(1 / 60); };
   window.encomPeek = function (cx, cz) { return grid[cz * N + cx]; };
 
-  newRound();
-  loop();
+  A.preload(function () {
+    newRound();
+    loop();
+  });
 
   // ── Screensaver ─────────────────────────────────────────────────────────
   if (!screensaver) return;
