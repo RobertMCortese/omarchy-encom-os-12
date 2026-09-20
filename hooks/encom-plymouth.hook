@@ -14,7 +14,7 @@
 
 current=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
 case $current in
-  tron-legacy|clu|tron-1982|tron-uprising|dillinger-systems|encom-*) theme=$current ;;
+  tron-legacy|clu|tron-1982|tron-uprising|tron-2-0|dillinger-systems|encom-*) theme=$current ;;
   *)                                                   theme=tron-legacy ;;
 esac
 

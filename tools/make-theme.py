@@ -52,6 +52,11 @@ VARIANTS = {
     # with the Renegade in a cool white and the occupation in rust.
     "tron-uprising": ("#11a389", "#c4562f", "TRON Uprising",
                       "The occupied grid: jade circuitry, rust alarms."),
+    # The game's system is a dark teal shot through with the Corruption, a
+    # chartreuse that measures #43691c to #72ad34 — the one hue in the wheel
+    # none of the films use.
+    "tron-2-0": ("#79c72f", "#ff5a2b", "TRON 2.0",
+                 "The infected system: corruption green, firewall orange."),
 }
 
 
@@ -268,7 +273,8 @@ CLASSIC = {"tron-1982"}
 # tools/make-portrait.py; "own" means the theme ships a portrait.gif of its
 # own and the generator leaves it alone.
 PORTRAIT = {"clu": "sentinel", "dillinger-systems": "own",
-            "tron-1982": "polyhedron", "tron-uprising": "glitch"}
+            "tron-1982": "polyhedron", "tron-uprising": "glitch",
+            "tron-2-0": "corrupt"}
 
 # Whose house this is: the wordmark a theme carries, and the name that
 # goes with it on the bar, the HUD and the lock screen.
@@ -284,7 +290,9 @@ SIGIL = {"dillinger-systems": "wedge"}
 # "splash" is the mark's colour on the boot screen, for a theme whose
 # highlight is not its own colour: Uprising boots jade, not white.
 OVERRIDE = {"tron-uprising": {"accentHi": "#e6f1ef", "ink": "#04100e",
-                              "splash": "#2fd0b0"}}
+                              "splash": "#2fd0b0"},
+            # The game's black is the system's own dark teal, not neutral.
+            "tron-2-0": {"accentHi": "#cdf08a", "ink": "#061513"}}
 
 # The wordmark on a theme's poster — its preview card and its boot splash.
 # This is the name of the thing, which is not always the mark the desktop
@@ -293,6 +301,7 @@ OVERRIDE = {"tron-uprising": {"accentHi": "#e6f1ef", "ink": "#04100e",
 POSTER = {
     "tron-legacy": "tron-legacy-mark.svg",
     "tron-uprising": "tron-uprising-mark.svg",
+    "tron-2-0": "tron-2-0-mark.svg",
     "clu": "clu-mark.svg",
     "tron-1982": "tron-1982-mark.svg",
     "dillinger-systems": "dillinger-mark.svg",
@@ -311,6 +320,10 @@ SIDES = {
     "tron-uprising": {"sideA": "#dff3ee", "sideAHi": "#ffffff",
                       "sideB": "#c4562f", "sideBHi": "#ffb48c",
                       "sideAName": "RENEGADE", "sideBName": "OCCUPATION"},
+    # The user against the Corruption, which is the game's whole argument.
+    "tron-2-0": {"sideA": "#6fd8ff", "sideAHi": "#d8f6ff",
+                 "sideB": "#8fd63f", "sideBHi": "#d6f79a",
+                 "sideAName": "USER", "sideBName": "CORRUPTION"},
 }
 
 def cursor_name(name):

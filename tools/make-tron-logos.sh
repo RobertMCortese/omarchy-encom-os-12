@@ -62,6 +62,22 @@ magick -background white \
 trace "$TMP/tron.pbm" "$ROOT/tron-1982/logo/tron-1982-mark.svg" "#a8ecff" \
   "TRON logo, after Tron (1982, Disney), with the year set beneath it. Traced for a fan desktop theme; Tron is a trademark of Disney."
 
+# ── TRON 2.0 ─────────────────────────────────────────────────────────────
+# The game's own logo is a chrome-bevelled wordmark that no clean flat copy
+# of is to be had, and a bevel would not survive tracing anyway. Its letters
+# sit in the same angular family as the first film's, so this sets the 1982
+# wordmark with the version beside it, at the wordmark's own height.
+TH=$(magick identify -format %h "$TMP/tron-word.png")
+magick -background white -fill black -font "$FONT" -pointsize 400 \
+  -kerning 10 label:"2.0" -trim +repage -resize "x$((TH * 78 / 100))" "$TMP/ver.png"
+magick -background white \
+  \( "$TMP/tron-word.png" \) \( -size "$((TH / 4))x10" xc:white \) \( "$TMP/ver.png" \) \
+  -gravity south +append \
+  -bordercolor white -border 30 -colorspace gray -resize 300% \
+  -threshold 92% "$TMP/t20.pbm"
+trace "$TMP/t20.pbm" "$ROOT/tron-2-0/logo/tron-2-0-mark.svg" "#a8ecff" \
+  "TRON 2.0 title, after the game (Disney/Monolith): the 1982 wordmark with the version set beside it. Traced for a fan desktop theme; Tron is a trademark of Disney."
+
 # ── TRON: UPRISING ───────────────────────────────────────────────────────
 # The series has no wordmark of its own: its title card is the Legacy mark
 # with UPRISING set under it, so that is how this is built. The LEGACY line

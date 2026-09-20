@@ -6,6 +6,7 @@ One animated GIF per theme, in the theme's own colours, drawn from code:
   sentinel    a helmeted silhouette, visor pulsing, head turning a little
   glitch      the same figure breaking up in bands of interference
   polyhedron  a faceted solid turning on its axis, in the 1982 manner
+  corrupt     the figure with the Corruption cracking across it
 
 They are original drawings, not anything out of the films. Frames are SVG,
 rendered with rsvg-convert and assembled with ImageMagick.
@@ -43,8 +44,26 @@ def frame_svg(style, i, colour, glow, ink):
     t = i / FRAMES
     turn = math.sin(t * 2 * math.pi)
     body = ""
-    if style in ("sentinel", "glitch"):
+    if style in ("sentinel", "glitch", "corrupt"):
         body = head(colour, glow, turn * 0.6, 0.35 + 0.35 * abs(math.sin(t * 4 * math.pi)))
+        if style == "corrupt":
+            # Veins of it, spreading and receding: each starts at the same
+            # place every frame and grows with t, so it reads as one thing
+            # creeping rather than a new scribble each time.
+            veins = ""
+            for v in range(6):
+                x, y = 18 + v * 30, H - 6
+                path = [f"M{x} {y}"]
+                ang = -math.pi / 2 + math.sin(v * 1.7) * 0.5
+                reach = 22 + 52 * (0.5 + 0.5 * math.sin(t * 2 * math.pi + v))
+                for seg in range(5):
+                    ang += math.sin(v * 2.3 + seg) * 0.7
+                    x += math.cos(ang) * reach / 5
+                    y += math.sin(ang) * reach / 5
+                    path.append(f"L{x:.0f} {y:.0f}")
+                veins += (f'<path d="{" ".join(path)}" fill="none" stroke="{glow}" '
+                          f'stroke-width="{1.6 + v % 2}" stroke-opacity="0.85"/>')
+            body += veins
         if style == "glitch":
             # Torn bands, sliding across and breaking up the picture.
             bands = ""

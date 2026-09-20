@@ -113,6 +113,7 @@ Two wordmarks here were traced from reference images on the Tron wiki:
 | TRON: LEGACY, in `theme/tron-legacy/logo/` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tron_Legacy_Logo.svg) | `tools/make-tron-logos.sh` |
 | TRON (1982), in `theme/tron-1982/logo/` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tron_(Disney),_Logo.svg) | `tools/make-tron-logos.sh` |
 | TRON: UPRISING, in `theme/tron-uprising/logo/` | the Legacy wordmark above, with the series name set beneath as its title card has it | `tools/make-tron-logos.sh` |
+| TRON 2.0, in `theme/tron-2-0/logo/` | the 1982 wordmark above, with the version set beside it; the game's own logo is a chrome bevel that would not survive tracing | `tools/make-tron-logos.sh` |
 
 The CLU wordmark (`theme/clu/logo/clu-mark.svg`) is not from the films: there is no CLU logo, so
 `tools/make-clu-logo.py` letters one in ENCOM's face, taking the C from the traced ENCOM mark and

@@ -16,7 +16,8 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/.." && pwd)
 shift || true
 THEMES=("$@")
-(( ${#THEMES[@]} )) || THEMES=(tron-legacy clu tron-1982 tron-uprising dillinger-systems)
+(( ${#THEMES[@]} )) || THEMES=(tron-legacy clu tron-1982 tron-uprising tron-2-0
+                              dillinger-systems)
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$OUT"

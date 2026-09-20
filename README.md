@@ -1,20 +1,20 @@
 # ENCOM OS-12 for Omarchy
 
-A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in five themes — TRON Legacy cyan, CLU orange, TRON 1982 electric blue, TRON Uprising jade and Dillinger Systems red.
+A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in six themes — TRON Legacy cyan, CLU orange, TRON 1982 electric blue, TRON Uprising jade, TRON 2.0 corruption green and Dillinger Systems red.
 
 ![Desktop](docs/desktop.png)
 
 ## What you get
 
 **The look**
-- A full Omarchy theme: black glass, Tron cyan, Clu-orange for alarms. Terminals, btop, editors and the shell all pick it up. Four more themes come with it ([below](#five-themes)).
+- A full Omarchy theme: black glass, Tron cyan, Clu-orange for alarms. Terminals, btop, editors and the shell all pick it up. Five more themes come with it ([below](#six-themes)).
 - Three generated wallpapers (grid horizon, circuit board, sea of simulation).
 - The ENCOM International logo on the bar, the HUD, the terminal and the boot splash.
 - Square window corners and windows that *rez* in and *derezz* out.
 - A cursor per theme: Adwaita's shapes recoloured, the body in the theme's bright accent, a soft halo under it and an outline in a dark tint of the same hue. It follows a theme switch.
 - Translucent terminals over the grid, and an ENCOM fastfetch readout.
 
-**The disc wars lock screen**: behind the password field, two original fighters, a teal program and an orange sentinel, duel with identity discs on concentric ring platforms high above the arena floor. (The 1982 theme puts [a different scene](#five-themes) there.)
+**The disc wars lock screen**: behind the password field, two original fighters, a teal program and an orange sentinel, duel with identity discs on concentric ring platforms high above the arena floor. (The 1982 theme puts [a different scene](#six-themes) there.)
 
 ![Lock screen: a disc banked off the ceiling, trailing light](docs/lock.png)
 
@@ -68,15 +68,15 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 | ![Launcher](docs/launcher.png) | ![Terminal](docs/terminal.png) |
 | ![Boot splash](docs/boot-splash.png) | |
 
-## Five themes
+## Six themes
 
-The same desktop comes in five colours. Everything above follows the one you pick: the terminal and editor palettes, the wallpapers, the logo, the boot splash, the HUD and bar, the alerts and their portrait, the light cycles, the lock screen and the Boardroom projection.
+The same desktop comes in six colours. Everything above follows the one you pick: the terminal and editor palettes, the wallpapers, the logo, the boot splash, the HUD and bar, the alerts and their portrait, the light cycles, the lock screen and the Boardroom projection.
 
-![The five themes](docs/five-themes.png)
+![The six themes](docs/six-themes.png)
 
 Even the pointer: one cursor per theme, built from Adwaita's geometry.
 
-![The five cursors](docs/theme-cursors.png)
+![The six cursors](docs/theme-cursors.png)
 
 | Theme | | The sides |
 |---|---|---|
@@ -85,8 +85,11 @@ Even the pointer: one cursor per theme, built from Adwaita's geometry.
 | **Dillinger Systems** | Dillinger red over black, ice-blue alarms, and its own wordmark in place of ENCOM's | DILLINGER vs ENCOM |
 | **TRON 1982** | The first film: electric blue (`#3b7bff`) and amber | USERS vs PROGRAMS |
 | **TRON Uprising** | The series between the films: jade (`#11a389`), a cool white highlight and rust alarms | RENEGADE vs OCCUPATION |
+| **TRON 2.0** | The 2003 game: the Corruption's chartreuse (`#79c72f`) over a dark teal system, firewall orange for alarms | USER vs CORRUPTION |
 
 Switch with Omarchy's own theme menu, where they're listed as *Tron Legacy*, *Clu*, *Dillinger Systems* and *Tron 1982*, or with `omarchy theme set "Tron Legacy"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
+
+TRON 2.0's green is the Corruption — the infection spreading over Monolith's clean geometry, `#43691c` to `#72ad34` in a frame of it, against a system that measures `#062727` to `#0b4549`. It is the one hue in the wheel none of the films use: Legacy sits at 195°, Uprising 168°, 1982 220°, CLU 35°, Dillinger 5°, and the Corruption at 85°.
 
 Uprising's jade is the series': a frame of it measures `#0a6658` to `#11a389` in the field, with the Renegade in `#e6f1ef` white and the occupation's circuitry in rust — so it is the one theme whose highlight is a white rather than a tint of its own colour, and the one whose sides are a white against a warm rather than two colours opposed.
 
