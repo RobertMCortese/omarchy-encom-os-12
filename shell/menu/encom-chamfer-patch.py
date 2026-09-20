@@ -138,9 +138,11 @@ LIB_NEW = """  // ENCOM app-library fallback: prefer the shell's, else use a pri
 
   Loader {
     id: encomAppLibraryLoader
-    // Only built when the shell gave us nothing, so a fixed Omarchy costs
-    // no second icon scan.
-    active: root.shell !== null && !root.shell.appLibrary
+    // Only built when the shell gave us nothing, so a working Omarchy costs
+    // no second icon scan. The shell handle itself can miss (clone panels
+    // are injected on the Loader's onLoaded, which is racy across restarts),
+    // so gate on the effective appLibrary, not on `shell`.
+    active: !(root.shell && root.shell.appLibrary)
     sourceComponent: Component { OmarchyServices.AppLibrary { } }
   }
 """
