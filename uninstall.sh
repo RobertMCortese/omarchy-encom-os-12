@@ -38,7 +38,11 @@ PYEOF
 }
 
 # ── Switch away from the theme before removing it ─────────────────────────
-if [[ $(omarchy theme current 2>/dev/null) == *"Encom"* || $(omarchy theme current 2>/dev/null) == *"Dillinger"* ]]; then
+case $(omarchy theme current 2>/dev/null) in
+  *Tron*|*Clu*|*Encom*|*Dillinger*) mine=1 ;;
+  *) mine=0 ;;
+esac
+if (( mine )); then
   say "Switching theme to Tokyo Night"
   run omarchy theme set tokyo-night >/dev/null
 fi
@@ -132,8 +136,9 @@ remove "$HOME/.local/share/icons/Encom-Cyan"
 remove "$HOME/.local/share/encom-boardroom"
 remove "$HOME/.local/share/encom-lightcycles"
 remove "$HOME/.cache/encom-boardroom"
-for t in "$OMA"/themes/encom-*/ "$OMA"/themes/dillinger-*/; do
-  [[ -d $t ]] && remove "${t%/}"
+for name in tron-legacy clu tron-1982 dillinger-systems encom-os-12 encom-clu \
+            encom-tron-82 encom-ares; do
+  [[ -d $OMA/themes/$name ]] && remove "$OMA/themes/$name"
 done
 
 run hyprctl reload >/dev/null

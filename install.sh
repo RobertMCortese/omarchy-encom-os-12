@@ -94,7 +94,7 @@ fi
 say "Installing ENCOM OS-12$( (( DRY )) && echo ' (dry run)')"
 
 # ── Theme ──────────────────────────────────────────────────────────────────
-say "Themes: ENCOM OS-12, and the Clu, Dillinger Systems and 1982 variants"
+say "Themes: TRON Legacy, and the CLU, Dillinger Systems and TRON 1982 variants"
 for t in "$REPO"/theme/*/; do
   put_own "$t" "$OMA/themes/$(basename "$t")"
 done
@@ -155,7 +155,7 @@ fi
 # ── Branding: fastfetch logo and screensaver banner from the ENCOM mark ──
 say "Terminal: fastfetch readout and ASCII logo"
 if (( ! DRY )); then
-  LOGO=$OMA/themes/encom-os-12/logo
+  LOGO=$OMA/themes/tron-legacy/logo
   # One readout per theme, drawn from that theme's own wordmark, so the
   # terminal follows whichever theme is up.
   for t in "$OMA"/themes/encom-*/ "$OMA"/themes/dillinger-*/; do
@@ -308,7 +308,7 @@ put "$REPO/hooks/encom-splash" "$HOME/.local/bin/encom-splash"
 
 # ── Apply ──────────────────────────────────────────────────────────────────
 say "Applying the theme"
-run omarchy theme set encom-os-12 >/dev/null
+run omarchy theme set tron-legacy >/dev/null
 run omarchy theme bg set "$HOME/.local/state/omarchy/current/theme/backgrounds/01-grid-horizon.png" >/dev/null
 run hyprctl reload >/dev/null
 if (( ! DRY )) && [[ -n $(hyprctl configerrors 2>/dev/null | tr -d '[:space:]') ]]; then

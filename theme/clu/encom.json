@@ -14,5 +14,7 @@
   "sideB": "#38c6f4",
   "sideBHi": "#bdecfb",
   "portrait": "sentinel",
-  "lockScene": "duel"
+  "lockScene": "duel",
+  "brand": "ENCOM OS-12",
+  "sigil": "disc"
 }

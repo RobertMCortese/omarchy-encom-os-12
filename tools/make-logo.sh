@@ -1,5 +1,5 @@
 #!/bin/bash
-# How theme/encom-os-12/logo/*.svg were made, for the record.
+# How theme/tron-legacy/logo/*.svg were made, for the record.
 #
 # The reference is "Encom inter logo.png" from the Tron wiki
 # (https://tron.fandom.com/wiki/ENCOM): the ENCOM International mark used in

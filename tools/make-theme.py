@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the ENCOM theme variants from theme/encom-os-12.
+"""Build the theme variants from theme/tron-legacy.
 
 Each variant is the same desktop in another Tron palette: the accent family
 (the cyan circuitry) moves to the theme's hue, the contrast family (the
@@ -23,7 +23,7 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 THEMES_DIR = HERE.parent / "theme"
-BASE = THEMES_DIR / "encom-os-12"
+BASE = THEMES_DIR / "tron-legacy"
 
 # The base theme's colour families, by role. Everything else is left alone.
 FAMILY = {
@@ -40,11 +40,11 @@ FAMILY = {
 # circuitry, the contrast the orange alarms; each family is shifted to that
 # hue and scaled to its saturation and lightness.
 VARIANTS = {
-    "encom-clu": ("#ff9d2e", "#38c6f4", "ENCOM OS-12 — Clu",
+    "clu": ("#ff9d2e", "#38c6f4", "ENCOM OS-12 — Clu",
                   "Clu's grid: amber circuitry, cold cyan alarms."),
     "dillinger-systems": ("#ff3b30", "#7fd0ff", "Dillinger Systems",
                           "Dillinger's grid: crimson circuitry, ice-blue alarms."),
-    "encom-tron-82": ("#b06cff", "#ffc300", "ENCOM OS-12 — 1982",
+    "tron-1982": ("#b06cff", "#ffc300", "ENCOM OS-12 — 1982",
                       "The first grid: violet circuitry, amber alarms."),
 }
 
@@ -103,6 +103,30 @@ def run(cmd):
     subprocess.run(cmd, check=True)
 
 
+def grid_horizon(accent, accent_hi, ink, W=1920, H=1080):
+    """The grid running to a lit horizon: the wallpaper, and the bed every
+    theme's poster card sits on, so the cards match whatever else a theme
+    keeps in its backgrounds."""
+    rows = []
+    horizon = H * 0.46
+    for i in range(-30, 31):
+        x = W / 2 + i * W * 0.085
+        rows.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%d" />' % (W / 2 + i * 6, horizon, x, H))
+    y, step = horizon, 3.0 * (H / 1080)
+    while y < H:
+        rows.append('<line x1="0" y1="%.1f" x2="%d" y2="%.1f" />' % (y, W, y))
+        step *= 1.32
+        y += step
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}">
+      <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="{ink}"/><stop offset="0.46" stop-color="{accent}" stop-opacity="0.22"/>
+        <stop offset="0.48" stop-color="{ink}"/><stop offset="1" stop-color="{ink}"/></linearGradient></defs>
+      <rect width="{W}" height="{H}" fill="{ink}"/><rect width="{W}" height="{H}" fill="url(#sky)"/>
+      <g stroke="{accent}" stroke-width="1.4" opacity="0.5">{"".join(rows)}</g>
+      <rect x="0" y="{horizon - 1.5:.0f}" width="{W}" height="3" fill="{accent_hi}" opacity="0.8"/>
+    </svg>"""
+
+
 def wallpapers(out, accent, accent_hi, ink):
     """Three wallpapers in the theme's colours: grid horizon, circuit, sea."""
     beds = out / "backgrounds"
@@ -110,26 +134,7 @@ def wallpapers(out, accent, accent_hi, ink):
     W, H = 1920, 1080
 
     # 01 grid horizon: a perspective grid running to a lit horizon.
-    rows, svg = [], []
-    horizon = H * 0.46
-    for i in range(-30, 31):
-        x = W / 2 + i * W * 0.085
-        rows.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%d" />' % (W / 2 + i * 6, horizon, x, H))
-    y = horizon
-    step = 3.0
-    while y < H:
-        rows.append('<line x1="0" y1="%.1f" x2="%d" y2="%.1f" />' % (y, W, y))
-        step *= 1.32
-        y += step
-    svg.append(f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}">
-      <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="{ink}"/><stop offset="0.46" stop-color="{accent}" stop-opacity="0.22"/>
-        <stop offset="0.48" stop-color="{ink}"/><stop offset="1" stop-color="{ink}"/></linearGradient></defs>
-      <rect width="{W}" height="{H}" fill="{ink}"/><rect width="{W}" height="{H}" fill="url(#sky)"/>
-      <g stroke="{accent}" stroke-width="1.4" opacity="0.5">{"".join(rows)}</g>
-      <rect x="0" y="{horizon - 1.5:.0f}" width="{W}" height="3" fill="{accent_hi}" opacity="0.8"/>
-    </svg>''')
-    (beds / "01-grid-horizon.svg").write_text(svg[0])
+    (beds / "01-grid-horizon.svg").write_text(grid_horizon(accent, accent_hi, ink))
 
     # 02 circuit: traces and pads, as on a board.
     import random
@@ -178,13 +183,19 @@ def logo_art(out, accent, accent_hi, ink, mark):
     run(["magick", str(tmp), "-background", "none", "-fill", accent_hi, "-colorize", "100",
          "-bordercolor", "none", "-border", "20x20", "-resize", "800x188",
          "-background", ink, "-gravity", "center", "-extent", "800x188", str(out / "unlock.png")])
-    # The preview: the grid wallpaper with the mark over it.
-    run(["magick", str(out / "backgrounds" / "01-grid-horizon.png"), "-resize", "1800x1012^",
+    # The preview card: a fresh grid in the theme's colours with the wordmark
+    # over it, so every card is the same bed whatever wallpapers the theme has.
+    bed = out / "_bed.svg"
+    bed.write_text(grid_horizon(accent, accent_hi, ink, 1800, 1012))
+    run(["rsvg-convert", "-w", "1800", "-h", "1012", "-o", str(out / "_bed.png"), str(bed)])
+    run(["magick", str(out / "_bed.png"), "-resize", "1800x1012^",
          "-gravity", "center", "-extent", "1800x1012",
          "(", str(tmp), "-background", "none", "-fill", accent_hi, "-colorize", "100", "-resize", "900x", ")",
          "-gravity", "center", "-composite", str(out / "preview.png")])
     shutil.copy(out / "preview.png", out / "preview-unlock.png")
     tmp.unlink()
+    bed.unlink()
+    (out / "_bed.png").unlink()
 
 
 def build(name):
@@ -225,21 +236,21 @@ def build(name):
     accent = mapping["#6fc3df"]
     assert accent.lower() == accent.lower()
     wallpapers(out, accent, mapping["#a8ecff"], mapping["#010305"])
-    logo_art(out, accent, mapping["#a8ecff"], mapping["#010305"], mark)
+    logo_art(out, accent, mapping["#a8ecff"], mapping["#010305"], poster_of(name))
     print(name, "accent", accent, "contrast", mapping["#ff8c21"])
 
 
 # The lock screen scene: the disc duel, or 1982's digitiser.
-LOCK_SCENE = {"encom-tron-82": "digitise"}
+LOCK_SCENE = {"tron-1982": "digitise"}
 # Themes that use the 1982 game's own pieces — the arena wall panels, the
 # classic cycle model and its light trails — rather than our Legacy-era
 # ones. They came with 3dLightCycles, which this screensaver started from.
-CLASSIC = {"encom-tron-82"}
+CLASSIC = {"tron-1982"}
 # Which portrait appears beside a Boardroom alert. A style name is drawn by
 # tools/make-portrait.py; "own" means the theme ships a portrait.gif of its
 # own and the generator leaves it alone.
-PORTRAIT = {"encom-clu": "sentinel", "dillinger-systems": "own",
-            "encom-tron-82": "polyhedron"}
+PORTRAIT = {"clu": "sentinel", "dillinger-systems": "own",
+            "tron-1982": "polyhedron"}
 
 # Whose house this is: the wordmark a theme carries, and the name that
 # goes with it on the bar, the HUD and the lock screen.
@@ -248,16 +259,53 @@ BRAND = {"dillinger-systems": ("DILLINGER SYSTEMS", "dillinger-mark.svg")}
 # the triangle under the Dillinger wordmark's g, in an angular frame.
 SIGIL = {"dillinger-systems": "wedge"}
 
+# The wordmark on a theme's poster — its preview card and its boot splash.
+# This is the name of the thing, which is not always the mark the desktop
+# wears: the ENCOM themes keep ENCOM on the bar and the HUD, and say what
+# they are on the poster.
+POSTER = {
+    "tron-legacy": "tron-legacy-mark.svg",
+    "clu": "clu-mark.svg",
+    "tron-1982": "tron-1982-mark.svg",
+    "dillinger-systems": "dillinger-mark.svg",
+}
+
 # The two sides in Light Cycles and the disc duel. By default they are the
 # theme's accent against its contrast colour; 1982 instead takes the colours
 # the original light cycle game was played in.
 SIDES = {
-    "encom-clu": {"sideAName": "CLU", "sideBName": "PROGRAMS"},
+    "clu": {"sideAName": "CLU", "sideBName": "PROGRAMS"},
     "dillinger-systems": {"sideAName": "DILLINGER", "sideBName": "ENCOM"},
-    "encom-tron-82": {"sideA": "#3b7bff", "sideAHi": "#d7e6ff",
+    "tron-1982": {"sideA": "#3b7bff", "sideAHi": "#d7e6ff",
                       "sideB": "#ffbe00", "sideBHi": "#fff3cf",
                       "sideAName": "USERS", "sideBName": "PROGRAMS"},
 }
 
-for theme in (sys.argv[1:] or VARIANTS):
-    build(theme)
+def poster_of(name):
+    own = THEMES_DIR / name / "logo" / POSTER.get(name, "mark.svg")
+    return own if own.exists() else THEMES_DIR / name / "logo" / "mark.svg"
+
+
+def repost(name):
+    """Redraw one theme's poster art from its wordmark and its own wallpaper.
+    Works for the base theme too, which build() never touches."""
+    out = THEMES_DIR / name
+    # Every theme keeps the mark the desktop wears at logo/mark.svg; the base
+    # theme has no build() pass to put it there.
+    brand, markname = BRAND.get(name, ("ENCOM OS-12", "encom-mark.svg"))
+    own = out / "logo" / markname
+    if own.exists():
+        shutil.copy(own, out / "logo" / "mark.svg")
+    palette = json.loads((out / "encom.json").read_text())
+    logo_art(out, palette["accent"], palette["accentHi"],
+             palette.get("ink", "#010305"), poster_of(name))
+    print(name, "poster from", poster_of(name).name)
+
+
+args = sys.argv[1:]
+if args and args[0] == "--posters":
+    for theme in (args[1:] or ["tron-legacy", *VARIANTS]):
+        repost(theme)
+else:
+    for theme in (args or VARIANTS):
+        build(theme)

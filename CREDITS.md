@@ -108,8 +108,14 @@ Two wordmarks here were traced from reference images on the Tron wiki:
 
 | Logo | Reference | Traced by |
 |---|---|---|
-| ENCOM International, in `theme/encom-os-12/logo/` | [Tron wiki: ENCOM](https://tron.fandom.com/wiki/ENCOM) | `tools/make-logo.sh` |
+| ENCOM International, in `theme/tron-legacy/logo/` | [Tron wiki: ENCOM](https://tron.fandom.com/wiki/ENCOM) | `tools/make-logo.sh` |
 | Dillinger Systems, in `theme/dillinger-systems/logo/` | [Tron wiki: Dillinger Systems](https://tron.fandom.com/wiki/Dillinger_Systems) | `tools/make-dillinger-logo.sh` |
+| TRON: LEGACY, in `theme/tron-legacy/logo/` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tron_Legacy_Logo.svg) | `tools/make-tron-logos.sh` |
+| TRON (1982), in `theme/tron-1982/logo/` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tron_(Disney),_Logo.svg) | `tools/make-tron-logos.sh` |
+
+The CLU wordmark (`theme/clu/logo/clu-mark.svg`) is not from the films: there is no CLU logo, so
+`tools/make-clu-logo.py` letters one in ENCOM's face, taking the C from the traced ENCOM mark and
+drawing the L and U to its measurements.
 
 This is an unofficial fan project, not affiliated with or endorsed by Disney; neither logo is
 covered by this repository's MIT licence.

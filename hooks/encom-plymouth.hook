@@ -14,8 +14,8 @@
 
 current=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
 case $current in
-  encom-*|dillinger-*) theme=$current ;;
-  *)                   theme=encom-os-12 ;;
+  tron-legacy|clu|tron-1982|dillinger-systems|encom-*) theme=$current ;;
+  *)                                                   theme=tron-legacy ;;
 esac
 
 theme_dir=$(omarchy-theme-dir "$theme" 2>/dev/null) || exit 0

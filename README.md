@@ -1,6 +1,6 @@
 # ENCOM OS-12 for Omarchy
 
-A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in four themes — OS-12 cyan, Clu orange, Dillinger Systems red and 1982 violet.
+A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in four themes — TRON Legacy cyan, CLU orange, Dillinger Systems red and TRON 1982 violet.
 
 ![Desktop](docs/desktop.png)
 
@@ -76,14 +76,14 @@ The same desktop comes in four colours. Everything above follows the one you pic
 
 | Theme | | The sides |
 |---|---|---|
-| **ENCOM OS-12** | Tron cyan, Clu orange for alarms | PROGRAMS vs CLU |
-| **ENCOM Clu** | Clu's orange, cyan for alarms | CLU vs PROGRAMS |
+| **TRON Legacy** | Tron cyan, Clu orange for alarms | PROGRAMS vs CLU |
+| **CLU** | Clu's orange, cyan for alarms | CLU vs PROGRAMS |
 | **Dillinger Systems** | Dillinger red over black, ice-blue alarms, and its own wordmark in place of ENCOM's | DILLINGER vs ENCOM |
-| **ENCOM 1982** | The first film: violet and amber | USERS vs PROGRAMS |
+| **TRON 1982** | The first film: violet and amber | USERS vs PROGRAMS |
 
-Switch with Omarchy's own theme menu, where they're listed as *Encom Os 12*, *Encom Clu*, *Dillinger Systems* and *Encom Tron 82*, or with `omarchy theme set "Dillinger Systems"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
+Switch with Omarchy's own theme menu, where they're listed as *Tron Legacy*, *Clu*, *Dillinger Systems* and *Tron 1982*, or with `omarchy theme set "Tron Legacy"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
 
-**1982 goes further.** The light cycles go back to the original game's blue against yellow, and to the pieces that came with the game this screensaver started from: its arena wall panels, its classic cycle model and its light trails, in place of our Legacy-era ones. (One palette key, `classic`, turns all three on.)
+**TRON 1982 goes further.** The light cycles go back to the original game's blue against yellow, and to the pieces that came with the game this screensaver started from: its arena wall panels, its classic cycle model and its light trails, in place of our Legacy-era ones. (One palette key, `classic`, turns all three on.)
 
 And the password screen is a different scene: not the disc duel but **the transfer**, our own recreation of the ride from the real world into the game world that the first film opens the grid with. Five movements on a 64-second loop, all wireframe, all generated:
 
@@ -103,6 +103,8 @@ Making your own is a script: colours in, theme out.
 tools/make-theme.py                 # rebuild all variants from theme/encom-os-12
 tools/make-portrait.py encom-ares   # redraw one theme's alert portrait
 ```
+
+Each theme's card and boot splash carry the name of the thing — the two films' wordmarks, CLU lettered in ENCOM's own face, Dillinger's traced from its reference — over a grid drawn in that theme's colour. The bar and HUD keep ENCOM's mark on the ENCOM themes; only Dillinger replaces it, since only Dillinger is a different house.
 
 `make-theme.py` holds a small table of target colours per theme and restyles the base theme's files into new ones, generating the wallpapers, the logo, the boot art, the preview and the palette. A theme can bring its own wordmark instead of ENCOM's — Dillinger Systems does — and every theme keeps it at `logo/mark.svg`, which the bar, the HUD and the terminal readout all read from the current theme, so the mark follows a theme switch. Each palette carries `lockScene` (`duel` or `digitise`), `portrait` (which portrait is drawn: `sentinel`, `glitch` or `polyhedron`) and the two sides' names and colours. `make-portrait.py` draws the portrait as SVG frames and assembles the GIF; a theme whose `portrait` is `own` keeps the `theme/<name>/portrait.gif` it ships instead, which is how Dillinger Systems gets the Master Control Program.
 
@@ -147,8 +149,8 @@ cd omarchy-encom-os-12
 
 | Path | What |
 |---|---|
-| `theme/encom-os-12/` | The Omarchy theme, logo (+ ASCII generator) and boot art. Each theme also carries `encom.json`, the palette every piece here reads |
-| `theme/encom-clu/`, `encom-ares/`, `encom-tron-82/` | The three variants, generated by `tools/make-theme.py` |
+| `theme/tron-legacy/` | The base theme, logo (+ ASCII generator) and boot art. Each theme also carries `encom.json`, the palette every piece here reads |
+| `theme/clu/`, `dillinger-systems/`, `tron-1982/` | The three variants, generated by `tools/make-theme.py` |
 | `hud/` | Quickshell service plugin: HUD panels, alerts, idle trigger |
 | `bar/` | Bar widgets and the telemetry probe |
 | `shell/` | Workspace nodes, and the patch that chamfers Omarchy's launcher |
