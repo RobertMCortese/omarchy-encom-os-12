@@ -1,10 +1,10 @@
-# ENCOM OS-12 — 1982
+# TRON 1982
 # Cold glass: near-black panels, hairline cyan circuitry, Clu-orange alarms.
 
 [bar]
-background       = "#070509"
+background       = "#050609"
 background-alpha = 0.82
-text             = "#d2acff"
+text             = "#72a0ff"
 active           = "#ffc300"
 scale-with-font  = true
 size-horizontal  = 26
@@ -16,29 +16,29 @@ active-border-foreground = "rgba(6fc3dfff) rgba(a8ecffff) 45deg"
 
 [controls]
 # Idle chrome reads as unlit circuit trace.
-normal-color        = "#d2acff"
+normal-color        = "#72a0ff"
 normal-fill-alpha   = 0.03
-normal-border       = "#b06cff"
+normal-border       = "#3b7bff"
 normal-border-width = 1
 normal-border-alpha = 0.30
 
 # Hover / keyboard cursor: the trace energises.
-hover-cursor-color        = "#ffffff"
+hover-cursor-color        = "#cdddff"
 hover-cursor-fill-alpha   = 0.10
-hover-cursor-border       = "#e4cdff"
+hover-cursor-border       = "#8fb3ff"
 hover-cursor-border-width = 1
 hover-cursor-border-alpha = 0.75
 
-focus-color        = "#ffffff"
+focus-color        = "#cdddff"
 focus-fill-alpha   = 0.10
-focus-border       = "#e4cdff"
+focus-border       = "#8fb3ff"
 focus-border-width = 1
 focus-border-alpha = 0.75
 
 # Selected: a lit segment.
-selected-color        = "#b06cff"
+selected-color        = "#3b7bff"
 selected-fill-alpha   = 0.20
-selected-border       = "#b06cff"
+selected-border       = "#3b7bff"
 selected-border-width = 1
 selected-border-alpha = 0.9
 
@@ -53,87 +53,87 @@ scale-with-font = true
 base-size = 12
 
 [popups]
-background       = "#070509"
+background       = "#050609"
 background-alpha = 0.94
-text             = "#f8f2ff"
+text             = "#afc9ff"
 border           = "hyprland.active-border"
 border-alpha     = 1.0
 border-width     = 1
 
 [tooltip]
-background       = "#030204"
+background       = "#020304"
 background-alpha = 0.95
-text             = "#e4cdff"
+text             = "#8fb3ff"
 border           = "hyprland.active-border-foreground"
 border-alpha     = 0.9
 
 [notifications]
-background       = "#070509"
+background       = "#050609"
 background-alpha = 0.94
-text             = "#f8f2ff"
+text             = "#afc9ff"
 border           = "hyprland.active-border"
 border-alpha     = 1.0
 border-width     = 1
-countdown        = "#b06cff"
+countdown        = "#3b7bff"
 
 [launcher]
-background                = "#070509"
+background                = "#050609"
 background-alpha          = 0.90
-text                      = "#f8f2ff"
+text                      = "#afc9ff"
 border                    = "hyprland.active-border-foreground"
 border-alpha              = 1.0
-scrim                     = "#030204"
+scrim                     = "#020304"
 scrim-alpha               = 0.62
-selected-background       = "#b06cff"
+selected-background       = "#3b7bff"
 selected-background-alpha = 0.16
-selected-text             = "#ffffff"
+selected-text             = "#cdddff"
 selected-border           = "hyprland.active-border-foreground"
 selected-border-alpha     = 0.65
 
 [menu]
-background                = "#070509"
+background                = "#050609"
 background-alpha          = 0.94
-text                      = "#f8f2ff"
+text                      = "#afc9ff"
 border                    = "hyprland.active-border-foreground"
 border-alpha              = 1.0
-scrim                     = "#030204"
+scrim                     = "#020304"
 scrim-alpha               = 0.62
-selected-background       = "#b06cff"
+selected-background       = "#3b7bff"
 selected-background-alpha = 0.16
-selected-text             = "#ffffff"
+selected-text             = "#cdddff"
 selected-border           = "hyprland.active-border-foreground"
 selected-border-alpha     = 0.65
 
 [polkit]
-background       = "#070509"
+background       = "#050609"
 background-alpha = 0.95
-text             = "#f8f2ff"
+text             = "#afc9ff"
 text-error       = "#ff6b3d"
 border           = "hyprland.active-border"
 border-error     = "#ff6b3d"
 border-alpha     = 1.0
-scrim            = "#030204"
+scrim            = "#020304"
 scrim-alpha      = 0.66
-accent           = "#b06cff"
+accent           = "#3b7bff"
 
 [lock]
-background       = "#070509"
+background       = "#050609"
 background-alpha = 0.72
-text             = "#ffffff"
-placeholder      = "#63319d"
+text             = "#cdddff"
+placeholder      = "#2a4987"
 text-error       = "#ff6b3d"
 border           = "hyprland.active-border"
 border-active    = "rgba(a8ecffff) rgba(6fc3dfff) 45deg"
 border-error     = "#ff6b3d"
 border-alpha     = 1.0
-selection        = "#b06cff"
+selection        = "#3b7bff"
 selection-alpha  = 0.45
 
 [image-picker]
-scrim                   = "#030204"
+scrim                   = "#020304"
 scrim-alpha             = 0.66
-text                    = "#f8f2ff"
-selected-border         = "#e4cdff"
+text                    = "#afc9ff"
+selected-border         = "#8fb3ff"
 selected-border-alpha   = 1.0
-unselected-border       = "#b06cff"
+unselected-border       = "#3b7bff"
 unselected-border-alpha = 0.22

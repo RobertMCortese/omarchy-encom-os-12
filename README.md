@@ -1,6 +1,6 @@
 # ENCOM OS-12 for Omarchy
 
-A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in four themes — TRON Legacy cyan, CLU orange, Dillinger Systems red and TRON 1982 violet.
+A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in four themes — TRON Legacy cyan, CLU orange, Dillinger Systems red and TRON 1982 electric blue.
 
 ![Desktop](docs/desktop.png)
 
@@ -83,7 +83,7 @@ Even the pointer: one cursor per theme, built from Adwaita's geometry.
 | **TRON Legacy** | Tron cyan, Clu orange for alarms | PROGRAMS vs CLU |
 | **CLU** | Clu's orange, cyan for alarms | CLU vs PROGRAMS |
 | **Dillinger Systems** | Dillinger red over black, ice-blue alarms, and its own wordmark in place of ENCOM's | DILLINGER vs ENCOM |
-| **TRON 1982** | The first film: violet and amber | USERS vs PROGRAMS |
+| **TRON 1982** | The first film: electric blue and amber | USERS vs PROGRAMS |
 
 Switch with Omarchy's own theme menu, where they're listed as *Tron Legacy*, *Clu*, *Dillinger Systems* and *Tron 1982*, or with `omarchy theme set "Tron Legacy"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
 

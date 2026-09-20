@@ -37,8 +37,8 @@ Item {
   id: field
 
   property var encomPalette: ({})
-  readonly property color accent: encomPalette.accent || "#b06cff"
-  readonly property color accentHi: encomPalette.accentHi || "#e4cdff"
+  readonly property color accent: encomPalette.accent || "#3b7bff"
+  readonly property color accentHi: encomPalette.accentHi || "#cfe0ff"
   readonly property color contrast: encomPalette.contrast || "#ffc300"
   readonly property color contrastHi: encomPalette.contrastHi || "#ffdf78"
   readonly property color ink: encomPalette.ink || "#03030a"

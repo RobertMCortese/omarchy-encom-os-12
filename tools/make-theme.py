@@ -44,8 +44,10 @@ VARIANTS = {
                   "Clu's grid: amber circuitry, cold cyan alarms."),
     "dillinger-systems": ("#ff3b30", "#7fd0ff", "Dillinger Systems",
                           "Dillinger's grid: crimson circuitry, ice-blue alarms."),
-    "tron-1982": ("#b06cff", "#ffc300", "ENCOM OS-12 — 1982",
-                      "The first grid: violet circuitry, amber alarms."),
+    # The first film reads blue, not violet: its own wordmark is a #1688b9
+    # gradient and the transfer sequence peaks around #3b70f6.
+    "tron-1982": ("#3b7bff", "#ffc300", "TRON 1982",
+                  "The first grid: electric blue circuitry, amber alarms."),
 }
 
 

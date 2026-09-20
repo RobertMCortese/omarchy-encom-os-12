@@ -1,12 +1,12 @@
 {
   "_": "ENCOM palette. Every ENCOM piece (HUD, bar, Light Cycles, lock screen, Boardroom) reads this from the current theme; each falls back to these Tron: Legacy colours if it is missing.",
-  "accent": "#b06cff",
-  "accentHi": "#e4cdff",
-  "accentDim": "#3d097b",
+  "accent": "#3b7bff",
+  "accentHi": "#8fb3ff",
+  "accentDim": "#07286a",
   "contrast": "#ffc300",
   "contrastHi": "#ffdf78",
-  "alert": "#e4cdff",
-  "ink": "#030205",
+  "alert": "#8fb3ff",
+  "ink": "#020305",
   "sideAName": "USERS",
   "sideBName": "PROGRAMS",
   "sideA": "#3b7bff",
@@ -15,8 +15,8 @@
   "sideBHi": "#fff3cf",
   "portrait": "polyhedron",
   "lockScene": "digitise",
+  "cursor": "Tron-1982-Cursor",
   "brand": "ENCOM OS-12",
   "sigil": "disc",
-  "cursor": "Tron-1982-Cursor",
   "classic": true
 }
