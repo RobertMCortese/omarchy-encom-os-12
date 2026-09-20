@@ -16,5 +16,6 @@
   "portrait": "own",
   "lockScene": "duel",
   "brand": "DILLINGER SYSTEMS",
-  "sigil": "wedge"
+  "sigil": "wedge",
+  "cursor": "Dillinger-Systems-Cursor"
 }

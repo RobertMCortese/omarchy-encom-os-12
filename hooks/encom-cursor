@@ -1,0 +1,39 @@
+#!/bin/bash
+# Point the cursor at the one built for the theme being set.
+#
+# Omarchy runs this from hooks/theme-set.d with the theme's name, so the
+# pointer changes colour with everything else instead of staying whatever the
+# install left. Each of our themes names its cursor in encom.json; a theme
+# that names none, or names one that is not installed, is left alone — the
+# cursor then stays as it was rather than reverting to something unrelated.
+#
+# Never fails a theme switch: a pointer is not worth one.
+theme=${1:-$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)}
+dir=$(omarchy-theme-dir "$theme" 2>/dev/null) || exit 0
+[[ -f $dir/encom.json ]] || exit 0
+
+name=$(python3 -c '
+import json, sys
+try:
+    print(json.load(open(sys.argv[1])).get("cursor", ""))
+except Exception:
+    pass' "$dir/encom.json" 2>/dev/null)
+[[ -n $name ]] || exit 0
+[[ -d $HOME/.local/share/icons/$name || -d /usr/share/icons/$name ]] || exit 0
+
+gsettings set org.gnome.desktop.interface cursor-theme "$name" 2>/dev/null || true
+for f in "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"; do
+  [[ -f $f ]] || continue
+  if grep -q '^gtk-cursor-theme-name' "$f"; then
+    sed -i "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=$name/" "$f"
+  else
+    echo "gtk-cursor-theme-name=$name" >> "$f"
+  fi
+done
+
+# Hyprland takes it live; everything started after this picks it up from the
+# environment, and XCURSOR_THEME keeps new clients in step.
+size=$(gsettings get org.gnome.desktop.interface cursor-size 2>/dev/null | tr -dc '0-9')
+hyprctl setcursor "$name" "${size:-24}" >/dev/null 2>&1 || true
+hyprctl keyword env XCURSOR_THEME,"$name" >/dev/null 2>&1 || true
+exit 0

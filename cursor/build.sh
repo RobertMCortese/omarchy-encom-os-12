@@ -1,12 +1,13 @@
 #!/bin/bash
-# Build the Encom-Cyan cursor theme by recolouring Adwaita's shapes.
+# Build a cursor theme by recolouring Adwaita's shapes.
 #
 # Hand-drawn cursors look amateurish; Adwaita's geometry is already good, so
-# this only remaps its greyscale ramp to cyan and lays a soft cyan halo under
-# each frame. Blur radius scales with frame size so a 24px cursor stays crisp.
+# this only remaps its greyscale ramp to the theme's colours and lays a soft
+# halo under each frame. Blur radius scales with frame size so a 24px cursor
+# stays crisp.
 #
 # Needs: xcur2png, xorg-xcursorgen, imagemagick.
-#   build.sh <workdir> <outdir>
+#   build.sh <workdir> <outdir> [name] [outline] [body] [halo]
 
 set -euo pipefail
 
@@ -14,9 +15,10 @@ SRC=/usr/share/icons/Adwaita/cursors
 WORK=${1:?usage: build.sh <workdir> <outdir>}
 OUT=${2:?usage: build.sh <workdir> <outdir>}
 
-FILL_DARK='#02141b'   # the outline, tinted rather than pure black
-FILL_LIGHT='#a8ecff'  # the body
-HALO='#6fc3df'
+NAME=${3:-Tron-Legacy-Cursor}
+FILL_DARK=${4:-'#02141b'}   # the outline, tinted rather than pure black
+FILL_LIGHT=${5:-'#a8ecff'}  # the body
+HALO=${6:-'#6fc3df'}
 
 rm -rf "$WORK" "$OUT"
 mkdir -p "$WORK" "$OUT/cursors"
@@ -92,16 +94,16 @@ while IFS= read -r -d '' link; do
   fi
 done < <(find "$SRC" -maxdepth 1 -type l -print0)
 
-cat > "$OUT/index.theme" <<'EOF'
+cat > "$OUT/index.theme" <<EOF
 [Icon Theme]
-Name=Encom-Cyan
-Comment=ENCOM OS-12 cursor - Adwaita geometry, Tron cyan with a soft halo
+Name=$NAME
+Comment=Adwaita geometry, recoloured with a soft halo
 Inherits=Adwaita
 EOF
 
-cat > "$OUT/cursor.theme" <<'EOF'
+cat > "$OUT/cursor.theme" <<EOF
 [Icon Theme]
-Name=Encom-Cyan
+Name=$NAME
 Inherits=Adwaita
 EOF
 

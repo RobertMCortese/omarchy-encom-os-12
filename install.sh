@@ -257,24 +257,26 @@ say "Hyprland: square corners, materialize/derezz animations, cursor"
 put "$REPO/hypr/encom.lua" "$CFG/hypr/encom.lua"
 add_block "$CFG/hypr/looknfeel.lua" encom-os-12 'require("hypr.encom")' "--"
 
-# ── Cursor ─────────────────────────────────────────────────────────────────
-say "Cursor: Encom-Cyan (recoloured from Adwaita)"
+# ── Cursors ────────────────────────────────────────────────────────────────
+say "Cursors: one per theme, recoloured from Adwaita (a couple of minutes)"
 if ! command -v xcur2png >/dev/null || ! command -v xcursorgen >/dev/null; then
   run omarchy pkg add xcur2png xorg-xcursorgen
 fi
 if (( ! DRY )); then
-  bash "$REPO/cursor/build.sh" "$TMP/cursor-work" "$TMP/Encom-Cyan" | tail -1
-  put_own "$TMP/Encom-Cyan" "$HOME/.local/share/icons/Encom-Cyan"
-  gsettings set org.gnome.desktop.interface cursor-theme Encom-Cyan 2>/dev/null || true
+  bash "$REPO/tools/make-cursors.sh" "$HOME/.local/share/icons" | grep -E '^::' || true
+  # The pointer follows a theme switch from here on.
+  put_own "$REPO/hooks/encom-cursor" "$OMA/hooks/theme-set.d/encom-cursor"
+  FIRST=Tron-Legacy-Cursor
+  gsettings set org.gnome.desktop.interface cursor-theme "$FIRST" 2>/dev/null || true
   for v in 3 4; do
     f=$CFG/gtk-$v.0/settings.ini
     mkdir -p "$(dirname "$f")"
     [[ -f $f ]] && { mkdir -p "$BACKUP/.config/gtk-$v.0"; cp -a "$f" "$BACKUP/.config/gtk-$v.0/"; echo ".config/gtk-$v.0/settings.ini" >> "$BACKUP/files"; }
     grep -q '^\[Settings\]' "$f" 2>/dev/null || echo '[Settings]' >> "$f"
     if grep -q '^gtk-cursor-theme-name' "$f"; then
-      sed -i 's/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=Encom-Cyan/' "$f"
+      sed -i "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=$FIRST/" "$f"
     else
-      echo 'gtk-cursor-theme-name=Encom-Cyan' >> "$f"
+      echo "gtk-cursor-theme-name=$FIRST" >> "$f"
     fi
   done
 fi

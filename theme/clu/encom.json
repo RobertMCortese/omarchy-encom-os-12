@@ -16,5 +16,6 @@
   "portrait": "sentinel",
   "lockScene": "duel",
   "brand": "ENCOM OS-12",
-  "sigil": "disc"
+  "sigil": "disc",
+  "cursor": "Clu-Cursor"
 }

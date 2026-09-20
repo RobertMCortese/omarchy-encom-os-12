@@ -227,6 +227,7 @@ def build(name):
     palette["portrait"] = PORTRAIT[name]
     palette["brand"] = brand
     palette["sigil"] = SIGIL.get(name, "disc")
+    palette["cursor"] = cursor_name(name)
     palette["lockScene"] = LOCK_SCENE.get(name, "duel")
     if name in CLASSIC:
         palette["classic"] = True
@@ -281,6 +282,11 @@ SIDES = {
                       "sideAName": "USERS", "sideBName": "PROGRAMS"},
 }
 
+def cursor_name(name):
+    """The cursor theme built for a desktop theme, by tools/make-cursors.sh."""
+    return "-".join(p.capitalize() for p in name.split("-")) + "-Cursor"
+
+
 def poster_of(name):
     own = THEMES_DIR / name / "logo" / POSTER.get(name, "mark.svg")
     return own if own.exists() else THEMES_DIR / name / "logo" / "mark.svg"
@@ -296,6 +302,11 @@ def repost(name):
     own = out / "logo" / markname
     if own.exists():
         shutil.copy(own, out / "logo" / "mark.svg")
+    # The base theme has no build() pass to record its cursor either.
+    palette = json.loads((out / "encom.json").read_text())
+    if palette.get("cursor") != cursor_name(name):
+        palette["cursor"] = cursor_name(name)
+        (out / "encom.json").write_text(json.dumps(palette, indent=2) + "\n")
     palette = json.loads((out / "encom.json").read_text())
     logo_art(out, palette["accent"], palette["accentHi"],
              palette.get("ink", "#010305"), poster_of(name))

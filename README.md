@@ -11,7 +11,7 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 - Three generated wallpapers (grid horizon, circuit board, sea of simulation).
 - The ENCOM International logo on the bar, the HUD, the terminal and the boot splash.
 - Square window corners and windows that *rez* in and *derezz* out.
-- The **Encom-Cyan** cursor: Adwaita's shapes, recoloured with a soft cyan halo.
+- A cursor per theme: Adwaita's shapes recoloured, the body in the theme's bright accent, a soft halo under it and an outline in a dark tint of the same hue. It follows a theme switch.
 - Translucent terminals over the grid, and an ENCOM fastfetch readout.
 
 **The disc wars lock screen**: behind the password field, two original fighters, a teal program and an orange sentinel, duel with identity discs on concentric ring platforms high above the arena floor. (The 1982 theme puts [a different scene](#four-themes) there.)
@@ -73,6 +73,10 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 The same desktop comes in four colours. Everything above follows the one you pick: the terminal and editor palettes, the wallpapers, the logo, the boot splash, the HUD and bar, the alerts and their portrait, the light cycles, the lock screen and the Boardroom projection.
 
 ![The four themes](docs/themes.png)
+
+Even the pointer: one cursor per theme, built from Adwaita's geometry.
+
+![The four cursors](docs/cursors.png)
 
 | Theme | | The sides |
 |---|---|---|
