@@ -12,10 +12,15 @@ import QtQuick
 //   2  THE TUNNEL  Real 3D from here on. Rings of a polygon strung along the
 //      axis, each turned a little further than the last, with the camera
 //      flying down the middle of them.
-//   3  THE PLANET  A wireframe sphere with slabs standing on its surface and
+//   3  THE FIELD  The way out of the tunnel is a port of nested squares
+//      that flies at the camera and opens onto a board: traces running away
+//      in two directions, rows of dots, patches of dot matrix, and beads of
+//      light travelling along the tracks, with the camera panning and
+//      rolling as it crosses.
+//   4  THE PLANET  A wireframe sphere with slabs standing on its surface and
 //      beams cutting across it, the camera falling towards the limb. Only the
 //      near face is drawn — the back of the sphere is culled away.
-//   4  THE LANDING  Down onto the grid: a lit plane running to the horizon,
+//   5  THE LANDING  Down onto the grid: a lit plane running to the horizon,
 //      slabs standing on it, the camera settling as it comes in.
 //
 // The 3D is hand-rolled — a camera basis and a perspective divide, with
@@ -44,15 +49,15 @@ Item {
   property bool running: true
 
   readonly property int dimCount: 900
-  readonly property int hotCount: 220
-  readonly property int warmCount: 30
+  readonly property int hotCount: 430
+  readonly property int warmCount: 150
 
   // The vanishing point sits above the password field, not behind it.
   readonly property real cx: width / 2
   readonly property real cy: height * 0.38
   readonly property real reach: Math.min(width * 0.6, height * 0.92)
 
-  readonly property real cycle: 44          // one full ride, in seconds
+  readonly property real cycle: 56          // one full ride, in seconds
 
   Rectangle { anchors.fill: parent; color: field.ink; z: -100 }
 
@@ -442,7 +447,126 @@ Item {
     }
   }
 
-  // ── 3. The planet ─────────────────────────────────────────────────────
+  // ── 3. The field ──────────────────────────────────────────────────────
+  // A board laid out in tiles. Which features a tile carries is decided by
+  // its coordinates, not by chance, so the board is the same every time the
+  // camera passes that spot and it can run for ever without being stored.
+  readonly property real tile: 4.6
+
+  function hash(a, b) {
+    var v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453
+    return v - Math.floor(v)
+  }
+
+  // A dot on the board: projected, then drawn as a little square that keeps
+  // its size in the world rather than on the screen.
+  function dot(x, y, z, size, alpha, pool) {
+    var d = proj(x, y, z, 0)
+    if (d < 0.35 || alpha <= 0.006) return
+    var ss = Math.min(11, Math.max(1.1, size * cam.f / d))
+    var sx = sc.x0, sy = sc.y0
+    if (pool === 1) glow(sx - ss / 2, sy, sx + ss / 2, sy, ss, alpha)
+    else if (pool === 2) beam(sx - ss / 2, sy, sx + ss / 2, sy, ss, alpha)
+    else draw(sx - ss / 2, sy, sx + ss / 2, sy, ss, alpha)
+  }
+
+  function board(t, w, fly, span) {
+    var i0 = Math.floor((fly - 3 * tile) / tile)
+    for (var i = 0; i < 18; i++) {
+      var zc = (i0 + i) * tile
+      var near = zc - fly
+      var fade = w * ease((near + 13) / 6) * Math.max(0, 1 - near / (15 * tile))
+      if (fade <= 0.006) continue
+      for (var j = -span; j <= span; j++) {
+        var xc = j * tile
+        var h = hash(i0 + i, j)
+        var h2 = hash(j, i0 + i)
+        var h3 = hash(i0 + i + 31, j - 17)
+        // A trace or two through every tile, so the board never thins out.
+        var base = (hash(i0 + i + 7, j + 13) - 0.5) * tile * 0.85
+        if (h3 < 0.5)
+          edge(xc + base, 0, zc, xc + base, 0, zc + tile, 1.2, fade * 0.7, 0)
+        else
+          edge(xc, 0, zc + base, xc + tile, 0, zc + base, 1.2, fade * 0.7, 0)
+        if (h < 0.34) {
+          // Traces: long runs, some along the board, some across it.
+          var runs = 2 + Math.floor(h2 * 3)
+          for (var r = 0; r < runs; r++) {
+            var off = (hash(i0 + i + r, j * 3) - 0.5) * tile * 0.8
+            var len = tile * (0.45 + hash(j + r, i0 + i) * 0.5)
+            var pool = h3 < 0.25 ? 1 : 0
+            if (h2 < 0.5)
+              edge(xc + off, 0, zc, xc + off, 0, zc + len, 1.3, fade * 0.9, pool)
+            else
+              edge(xc, 0, zc + off, xc + len, 0, zc + off, 1.3, fade * 0.9, pool)
+          }
+        } else if (h < 0.62) {
+          // A row of dots, evenly spaced, running one way or the other.
+          var n = 9 + Math.floor(h3 * 7)
+          var gap = tile / n
+          var lane = (h2 - 0.5) * tile * 0.7
+          for (var k = 0; k < n; k++) {
+            if (h2 < 0.5) dot(xc + lane, 0, zc + k * gap, 0.07, fade * 0.8, 0)
+            else dot(xc + k * gap, 0, zc + lane, 0.07, fade * 0.8, 0)
+          }
+        } else if (h < 0.82) {
+          // A patch of dot matrix: the fragments of grid on the board.
+          var cols = 4 + Math.floor(h2 * 4), rows = 3 + Math.floor(h3 * 4)
+          var step = tile * 0.12
+          var bxp = xc - cols * step / 2, bzp = zc - rows * step / 2
+          for (var cc = 0; cc < cols; cc++)
+            for (var rr = 0; rr < rows; rr++)
+              dot(bxp + cc * step, 0, bzp + rr * step, 0.055,
+                  fade * (0.5 + 0.45 * hash(cc + i, rr + j)), h3 < 0.4 ? 1 : 0)
+        } else {
+          // Vias: a few lone warm dots.
+          for (var v = 0; v < 4; v++)
+            dot(xc + (hash(v + i, j) - 0.5) * tile, 0, zc + (hash(j, v + i) - 0.5) * tile,
+                0.1, fade, 2)
+        }
+        // Beads of light, running along a track through the tile.
+        if (h2 > 0.78) {
+          var beads = 7
+          var travel = ((t * 0.45 + h) % 1) * tile * 2 - tile * 0.5
+          for (var b2 = 0; b2 < beads; b2++) {
+            var slide = travel - b2 * 0.26
+            var lit = fade * (1 - b2 / beads)
+            if (h3 < 0.5) dot(xc + (h - 0.5) * tile, 0.02, zc + slide, 0.11, lit, 1)
+            else dot(xc + slide, 0.02, zc + (h - 0.5) * tile, 0.11, lit, 1)
+          }
+        }
+      }
+    }
+  }
+
+  function fieldRide(t, w, age) {
+    var fly = t * 6.5
+    // Panning and rolling as it crosses the board.
+    var yaw = Math.sin(t * 0.16) * 0.5
+    var roll = Math.sin(t * 0.1) * 0.28
+    var hgt = 4.2 + 1.1 * Math.sin(t * 0.13)
+    var side = Math.sin(t * 0.08) * 4
+    // Aimed down at the board, so it fills the frame rather than running off
+    // as a band across the corner.
+    look(side, hgt, fly,
+         side + Math.sin(yaw) * 4.5, 0, fly + Math.cos(yaw) * 4.5, 66, roll)
+    board(t, w, fly, 9)
+    // The port: nested squares that fly at the camera and open out.
+    if (age < 3.4) {
+      var app = 1 - age / 3.4
+      for (var n = 0; n < 4; n++) {
+        var pz = fly + 0.6 + app * 30 + n * 1.6
+        var hs = 2.4 + n * 0.85
+        var pa = w * ease(app * 2.2) * (1 - n * 0.15)
+        edge(side - hs, hgt - hs, pz, side + hs, hgt - hs, pz, 1.7, pa, 1)
+        edge(side + hs, hgt - hs, pz, side + hs, hgt + hs, pz, 1.7, pa, 1)
+        edge(side + hs, hgt + hs, pz, side - hs, hgt + hs, pz, 1.7, pa, 1)
+        edge(side - hs, hgt + hs, pz, side - hs, hgt - hs, pz, 1.7, pa, 1)
+      }
+    }
+  }
+
+  // ── 4. The planet ─────────────────────────────────────────────────────
   // A wireframe sphere: rings of latitude, meridians of longitude, and slabs
   // standing on the surface. Only the near face is drawn.
   readonly property int lat: 13
@@ -520,7 +644,7 @@ Item {
     }
   }
 
-  // ── 4. The landing ────────────────────────────────────────────────────
+  // ── 5. The landing ────────────────────────────────────────────────────
   // The grid: a lit plane running away to the horizon, slabs on it, the
   // camera coming in low.
   readonly property real gridStep: 3.0
@@ -577,21 +701,23 @@ Item {
     wi = 0
 
     var u = (t / cycle) % 1
-    var wKal = weigh(u, 0.01, 0.15, 0.035)
-    var wTun = weigh(u, 0.19, 0.39, 0.035)
-    var wPla = weigh(u, 0.43, 0.68, 0.025)
-    var wLan = weigh(u, 0.73, 0.97, 0.022)
+    var wKal = weigh(u, 0.01, 0.12, 0.028)
+    var wTun = weigh(u, 0.15, 0.32, 0.028)
+    var wFld = weigh(u, 0.35, 0.55, 0.022)
+    var wPla = weigh(u, 0.58, 0.76, 0.022)
+    var wLan = weigh(u, 0.79, 0.98, 0.02)
     var open = ease(Math.min(1, t / 2))     // fade up on load
 
     if (wKal > 0.01) {
       // How far through the movement we are, for the colour cycle.
-      cycleTint(t, Math.min(1, Math.max(0, (u - 0.01) / 0.14)))
+      cycleTint(t, Math.min(1, Math.max(0, (u - 0.01) / 0.11)))
       kaleidoscope(t, wKal * open)
     } else if (tintTick !== -2) {
       tint = accent          // the rest of the ride keeps the theme's colour
       tintTick = -2
     }
     if (wTun > 0.01) tunnel(t, wTun * open)
+    if (wFld > 0.01) fieldRide(t, wFld * open, (u - 0.35) * cycle)
     if (wPla > 0.01) planet(t, wPla * open)
     if (wLan > 0.01) landing(t, wLan * open)
 
