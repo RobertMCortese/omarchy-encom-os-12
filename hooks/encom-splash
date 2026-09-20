@@ -17,7 +17,7 @@ if [[ -z $theme ]]; then
   theme=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null || true)
 fi
 case $theme in
-  tron-legacy|clu|tron-1982|dillinger-systems|encom-*) ;;
+  tron-legacy|clu|tron-1982|tron-uprising|dillinger-systems|encom-*) ;;
   *) echo "The current theme ($theme) is not one of ours; name one instead:" >&2
      echo "  encom-splash tron-legacy" >&2
      exit 1 ;;

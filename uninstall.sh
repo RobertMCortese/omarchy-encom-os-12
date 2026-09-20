@@ -133,15 +133,15 @@ fi
 say "Cursor, Boardroom, Light Cycles and theme files"
 run gsettings reset org.gnome.desktop.interface cursor-theme 2>/dev/null || true
 remove "$OMA/hooks/theme-set.d/encom-cursor"
-for c in Tron-Legacy-Cursor Clu-Cursor Tron-1982-Cursor Dillinger-Systems-Cursor \
-         Encom-Cyan; do
+for c in Tron-Legacy-Cursor Clu-Cursor Tron-1982-Cursor Tron-Uprising-Cursor \
+         Dillinger-Systems-Cursor Encom-Cyan; do
   remove "$HOME/.local/share/icons/$c"
 done
 remove "$HOME/.local/share/encom-boardroom"
 remove "$HOME/.local/share/encom-lightcycles"
 remove "$HOME/.cache/encom-boardroom"
-for name in tron-legacy clu tron-1982 dillinger-systems encom-os-12 encom-clu \
-            encom-tron-82 encom-ares; do
+for name in tron-legacy clu tron-1982 tron-uprising dillinger-systems \
+            encom-os-12 encom-clu encom-tron-82 encom-ares; do
   [[ -d $OMA/themes/$name ]] && remove "$OMA/themes/$name"
 done
 

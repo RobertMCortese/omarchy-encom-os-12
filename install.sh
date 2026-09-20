@@ -94,7 +94,7 @@ fi
 say "Installing ENCOM OS-12$( (( DRY )) && echo ' (dry run)')"
 
 # ── Theme ──────────────────────────────────────────────────────────────────
-say "Themes: TRON Legacy, and the CLU, Dillinger Systems and TRON 1982 variants"
+say "Themes: TRON Legacy, and the CLU, TRON 1982, TRON Uprising and Dillinger Systems variants"
 for t in "$REPO"/theme/*/; do
   put_own "$t" "$OMA/themes/$(basename "$t")"
 done

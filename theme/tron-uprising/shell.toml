@@ -1,0 +1,139 @@
+# TRON Uprising
+# Cold glass: near-black panels, hairline cyan circuitry, Clu-orange alarms.
+
+[bar]
+background       = "#050909"
+background-alpha = 0.82
+text             = "#13c0a2"
+active           = "#c4562f"
+scale-with-font  = true
+size-horizontal  = 26
+size-vertical    = 28
+
+[hyprland]
+active-border            = "rgba(6fc3dfee) rgba(19c7ffee) rgba(0a6f8fee) 45deg"
+active-border-foreground = "rgba(6fc3dfff) rgba(a8ecffff) 45deg"
+
+[controls]
+# Idle chrome reads as unlit circuit trace.
+normal-color        = "#13c0a2"
+normal-fill-alpha   = 0.03
+normal-border       = "#11a389"
+normal-border-width = 1
+normal-border-alpha = 0.30
+
+# Hover / keyboard cursor: the trace energises.
+hover-cursor-color        = "#09ffd3"
+hover-cursor-fill-alpha   = 0.10
+hover-cursor-border       = "#00e4bb"
+hover-cursor-border-width = 1
+hover-cursor-border-alpha = 0.75
+
+focus-color        = "#09ffd3"
+focus-fill-alpha   = 0.10
+focus-border       = "#00e4bb"
+focus-border-width = 1
+focus-border-alpha = 0.75
+
+# Selected: a lit segment.
+selected-color        = "#11a389"
+selected-fill-alpha   = 0.20
+selected-border       = "#11a389"
+selected-border-width = 1
+selected-border-alpha = 0.9
+
+pressed-fill-alpha   = 0.28
+selection-fill-alpha = 0.40
+
+[spacing]
+scale = 1.0
+scale-with-font = true
+
+[font]
+base-size = 12
+
+[popups]
+background       = "#050909"
+background-alpha = 0.94
+text             = "#00f6ca"
+border           = "hyprland.active-border"
+border-alpha     = 1.0
+border-width     = 1
+
+[tooltip]
+background       = "#020404"
+background-alpha = 0.95
+text             = "#00e4bb"
+border           = "hyprland.active-border-foreground"
+border-alpha     = 0.9
+
+[notifications]
+background       = "#050909"
+background-alpha = 0.94
+text             = "#00f6ca"
+border           = "hyprland.active-border"
+border-alpha     = 1.0
+border-width     = 1
+countdown        = "#11a389"
+
+[launcher]
+background                = "#050909"
+background-alpha          = 0.90
+text                      = "#00f6ca"
+border                    = "hyprland.active-border-foreground"
+border-alpha              = 1.0
+scrim                     = "#020404"
+scrim-alpha               = 0.62
+selected-background       = "#11a389"
+selected-background-alpha = 0.16
+selected-text             = "#09ffd3"
+selected-border           = "hyprland.active-border-foreground"
+selected-border-alpha     = 0.65
+
+[menu]
+background                = "#050909"
+background-alpha          = 0.94
+text                      = "#00f6ca"
+border                    = "hyprland.active-border-foreground"
+border-alpha              = 1.0
+scrim                     = "#020404"
+scrim-alpha               = 0.62
+selected-background       = "#11a389"
+selected-background-alpha = 0.16
+selected-text             = "#09ffd3"
+selected-border           = "hyprland.active-border-foreground"
+selected-border-alpha     = 0.65
+
+[polkit]
+background       = "#050909"
+background-alpha = 0.95
+text             = "#00f6ca"
+text-error       = "#ff6b3d"
+border           = "hyprland.active-border"
+border-error     = "#ff6b3d"
+border-alpha     = 1.0
+scrim            = "#020404"
+scrim-alpha      = 0.66
+accent           = "#11a389"
+
+[lock]
+background       = "#050909"
+background-alpha = 0.72
+text             = "#09ffd3"
+placeholder      = "#1d4941"
+text-error       = "#ff6b3d"
+border           = "hyprland.active-border"
+border-active    = "rgba(a8ecffff) rgba(6fc3dfff) 45deg"
+border-error     = "#ff6b3d"
+border-alpha     = 1.0
+selection        = "#11a389"
+selection-alpha  = 0.45
+
+[image-picker]
+scrim                   = "#020404"
+scrim-alpha             = 0.66
+text                    = "#00f6ca"
+selected-border         = "#00e4bb"
+selected-border-alpha   = 1.0
+unselected-border       = "#11a389"
+unselected-border-alpha = 0.22

@@ -48,6 +48,10 @@ VARIANTS = {
     # gradient and the transfer sequence peaks around #3b70f6.
     "tron-1982": ("#3b7bff", "#ffc300", "TRON 1982",
                   "The first grid: electric blue circuitry, amber alarms."),
+    # The series is jade, not cyan: its field measures #0a6658 to #11a389,
+    # with the Renegade in a cool white and the occupation in rust.
+    "tron-uprising": ("#11a389", "#c4562f", "TRON Uprising",
+                      "The occupied grid: jade circuitry, rust alarms."),
 }
 
 
@@ -178,7 +182,7 @@ def wallpapers(out, accent, accent_hi, ink):
         svg_file.unlink()
 
 
-def logo_art(out, accent, accent_hi, ink, poster, mark):
+def logo_art(out, accent, accent_hi, ink, poster, mark, splash=None):
     """Two pieces of art in the theme's colour.
 
     The boot splash and the disk unlock prompt carry the mark the desktop
@@ -187,7 +191,7 @@ def logo_art(out, accent, accent_hi, ink, poster, mark):
     is only ever seen in the readme and the theme picker."""
     plate = out / "_mark.png"
     run(["rsvg-convert", "-w", "760", "-o", str(plate), str(mark)])
-    run(["magick", str(plate), "-background", "none", "-fill", accent_hi, "-colorize", "100",
+    run(["magick", str(plate), "-background", "none", "-fill", splash or accent_hi, "-colorize", "100",
          "-bordercolor", "none", "-border", "20x20", "-resize", "800x188",
          "-background", ink, "-gravity", "center", "-extent", "800x188", str(out / "unlock.png")])
     plate.unlink()
@@ -241,14 +245,16 @@ def build(name):
     palette["lockScene"] = LOCK_SCENE.get(name, "duel")
     if name in CLASSIC:
         palette["classic"] = True
+    palette.update(OVERRIDE.get(name, {}))
     palette.update(SIDES.get(name, {}))
     (out / "encom.json").write_text(json.dumps(palette, indent=2) + "\n")
 
-    accent = mapping["#6fc3df"]
-    assert accent.lower() == accent.lower()
-    wallpapers(out, accent, mapping["#a8ecff"], mapping["#010305"])
-    logo_art(out, accent, mapping["#a8ecff"], mapping["#010305"],
-             poster_of(name), out / "logo" / "mark.svg")
+    # The art takes its colours from the finished palette, so a theme that
+    # overrides one (Uprising's white highlight) is drawn in it too.
+    accent, bright, ink = palette["accent"], palette["accentHi"], palette["ink"]
+    wallpapers(out, accent, bright, ink)
+    logo_art(out, accent, bright, ink, poster_of(name), out / "logo" / "mark.svg",
+             palette.get("splash"))
     print(name, "accent", accent, "contrast", mapping["#ff8c21"])
 
 
@@ -262,7 +268,7 @@ CLASSIC = {"tron-1982"}
 # tools/make-portrait.py; "own" means the theme ships a portrait.gif of its
 # own and the generator leaves it alone.
 PORTRAIT = {"clu": "sentinel", "dillinger-systems": "own",
-            "tron-1982": "polyhedron"}
+            "tron-1982": "polyhedron", "tron-uprising": "glitch"}
 
 # Whose house this is: the wordmark a theme carries, and the name that
 # goes with it on the bar, the HUD and the lock screen.
@@ -271,12 +277,22 @@ BRAND = {"dillinger-systems": ("DILLINGER SYSTEMS", "dillinger-mark.svg")}
 # the triangle under the Dillinger wordmark's g, in an angular frame.
 SIGIL = {"dillinger-systems": "wedge"}
 
+# Palette keys a theme sets for itself, after the colour swap has run.
+# Uprising's highlight is the Renegade's cool white rather than a pale tint
+# of its jade, because that white against the jade is what the series looks
+# like; its black carries a little of the same green.
+# "splash" is the mark's colour on the boot screen, for a theme whose
+# highlight is not its own colour: Uprising boots jade, not white.
+OVERRIDE = {"tron-uprising": {"accentHi": "#e6f1ef", "ink": "#04100e",
+                              "splash": "#2fd0b0"}}
+
 # The wordmark on a theme's poster — its preview card and its boot splash.
 # This is the name of the thing, which is not always the mark the desktop
 # wears: the ENCOM themes keep ENCOM on the bar and the HUD, and say what
 # they are on the poster.
 POSTER = {
     "tron-legacy": "tron-legacy-mark.svg",
+    "tron-uprising": "tron-uprising-mark.svg",
     "clu": "clu-mark.svg",
     "tron-1982": "tron-1982-mark.svg",
     "dillinger-systems": "dillinger-mark.svg",
@@ -289,8 +305,12 @@ SIDES = {
     "clu": {"sideAName": "CLU", "sideBName": "PROGRAMS"},
     "dillinger-systems": {"sideAName": "DILLINGER", "sideBName": "ENCOM"},
     "tron-1982": {"sideA": "#3b7bff", "sideAHi": "#d7e6ff",
-                      "sideB": "#ffbe00", "sideBHi": "#fff3cf",
-                      "sideAName": "USERS", "sideBName": "PROGRAMS"},
+                  "sideB": "#ffbe00", "sideBHi": "#fff3cf",
+                  "sideAName": "USERS", "sideBName": "PROGRAMS"},
+    # The Renegade's white against the occupation's rust.
+    "tron-uprising": {"sideA": "#dff3ee", "sideAHi": "#ffffff",
+                      "sideB": "#c4562f", "sideBHi": "#ffb48c",
+                      "sideAName": "RENEGADE", "sideBName": "OCCUPATION"},
 }
 
 def cursor_name(name):
@@ -320,7 +340,8 @@ def repost(name):
         (out / "encom.json").write_text(json.dumps(palette, indent=2) + "\n")
     palette = json.loads((out / "encom.json").read_text())
     logo_art(out, palette["accent"], palette["accentHi"],
-             palette.get("ink", "#010305"), poster_of(name), out / "logo" / "mark.svg")
+             palette.get("ink", "#010305"), poster_of(name), out / "logo" / "mark.svg",
+             palette.get("splash"))
     print(name, "poster from", poster_of(name).name)
 
 

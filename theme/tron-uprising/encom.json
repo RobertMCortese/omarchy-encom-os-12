@@ -1,0 +1,22 @@
+{
+  "_": "ENCOM palette. Every ENCOM piece (HUD, bar, Light Cycles, lock screen, Boardroom) reads this from the current theme; each falls back to these Tron: Legacy colours if it is missing.",
+  "accent": "#11a389",
+  "accentHi": "#e6f1ef",
+  "accentDim": "#0a382f",
+  "contrast": "#c4562f",
+  "contrastHi": "#e19c84",
+  "alert": "#00e4bb",
+  "ink": "#04100e",
+  "sideAName": "RENEGADE",
+  "sideBName": "OCCUPATION",
+  "sideA": "#dff3ee",
+  "sideAHi": "#ffffff",
+  "sideB": "#c4562f",
+  "sideBHi": "#ffb48c",
+  "portrait": "glitch",
+  "lockScene": "duel",
+  "cursor": "Tron-Uprising-Cursor",
+  "brand": "ENCOM OS-12",
+  "sigil": "disc",
+  "splash": "#2fd0b0"
+}

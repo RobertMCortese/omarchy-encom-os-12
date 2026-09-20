@@ -61,3 +61,20 @@ magick -background white \
   -threshold 92% "$TMP/tron.pbm"   # the wordmark is a gradient: take all of it, not its dark half
 trace "$TMP/tron.pbm" "$ROOT/tron-1982/logo/tron-1982-mark.svg" "#a8ecff" \
   "TRON logo, after Tron (1982, Disney), with the year set beneath it. Traced for a fan desktop theme; Tron is a trademark of Disney."
+
+# ── TRON: UPRISING ───────────────────────────────────────────────────────
+# The series has no wordmark of its own: its title card is the Legacy mark
+# with UPRISING set under it, so that is how this is built. The LEGACY line
+# is cropped off the bottom of the Legacy render and the series name set in
+# its place, the same way the year sits under the 1982 wordmark.
+magick "$TMP/legacy.png" -colorspace gray -gravity north -chop 0x150 -trim +repage "$TMP/legacy-word.png"
+LH=$(magick identify -format %h "$TMP/legacy-word.png")
+LW=$(magick identify -format %w "$TMP/legacy-word.png")
+magick "$TMP/legacy-word.png" -gravity south -chop "0x$((LH * 22 / 100))" +repage "$TMP/tron-only.png"
+magick -background white -fill black -font "$FONT" -pointsize 150 \
+  -kerning 70 label:"U P R I S I N G" -trim +repage -resize "$((LW * 70 / 100))x" "$TMP/series.png"
+magick -background white \
+  \( "$TMP/tron-only.png" \) \( "$TMP/series.png" \) -gravity center -append \
+  -bordercolor white -border 30 -colorspace gray -resize 300% -threshold 60% "$TMP/uprising.pbm"
+trace "$TMP/uprising.pbm" "$ROOT/tron-uprising/logo/tron-uprising-mark.svg" "#a8ecff" \
+  "TRON: UPRISING title, after the series (Disney): the Legacy wordmark with the series name set beneath, as its title card has it. Traced for a fan desktop theme; Tron is a trademark of Disney."
