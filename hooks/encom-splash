@@ -14,7 +14,7 @@ set -euo pipefail
 
 theme=${1:-}
 if [[ -z $theme ]]; then
-  theme=$(basename "$(readlink -f "$HOME/.local/state/omarchy/current/theme" 2>/dev/null)" 2>/dev/null || true)
+  theme=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null || true)
 fi
 case $theme in
   encom-*|dillinger-*) ;;

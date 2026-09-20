@@ -12,7 +12,7 @@
 #
 # Never fails the update: a boot splash is not worth aborting an upgrade over.
 
-current=$(basename "$(readlink -f "$HOME/.local/state/omarchy/current/theme" 2>/dev/null)" 2>/dev/null)
+current=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
 case $current in
   encom-*|dillinger-*) theme=$current ;;
   *)                   theme=encom-os-12 ;;
