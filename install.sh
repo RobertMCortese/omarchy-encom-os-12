@@ -300,8 +300,11 @@ else
   say "Wallpaper: live Boardroom skipped; turn it on later with: encom-wallpaper on"
 fi
 
-# ── Boot splash hook ──────────────────────────────────────────────────────
+# ── Boot splash ───────────────────────────────────────────────────────────
 put "$REPO/hooks/encom-plymouth.hook" "$OMA/hooks/post-update.d/encom-plymouth.hook"
+# The splash and the disk unlock prompt live in the initramfs, so a theme
+# switch cannot repaint them by itself; this command does, when asked.
+put "$REPO/hooks/encom-splash" "$HOME/.local/bin/encom-splash"
 
 # ── Apply ──────────────────────────────────────────────────────────────────
 say "Applying the theme"
@@ -321,7 +324,7 @@ if [[ $PLYMOUTH == yes ]]; then
   say "Boot splash"
   run "$OMA/hooks/post-update.d/encom-plymouth.hook"
 else
-  say "Boot splash skipped; install it later with: omarchy plymouth set-by-theme encom-os-12"
+  say "Boot splash skipped; install it later with: encom-splash"
 fi
 
 (( DRY )) || say "Done. Backups of anything replaced: ${BACKUP/#$HOME/\~}"

@@ -1,0 +1,35 @@
+#!/bin/bash
+# Put the current theme's mark on the boot splash and the disk unlock prompt.
+#
+# A theme switch repaints everything in the session at once, but not these:
+# they live in the initramfs, so changing them needs sudo and a rebuild. That
+# is too slow and too loud to do on every switch, so it is this command's job.
+#
+#   encom-splash            set the splash from the current theme
+#   encom-splash <theme>    set it from a named theme
+#
+# The installed post-update hook keeps it in place afterwards, since an
+# Omarchy update owns those files and puts its own splash back.
+set -euo pipefail
+
+theme=${1:-}
+if [[ -z $theme ]]; then
+  theme=$(basename "$(readlink -f "$HOME/.local/state/omarchy/current/theme" 2>/dev/null)" 2>/dev/null || true)
+fi
+case $theme in
+  encom-*|dillinger-*) ;;
+  *) echo "The current theme ($theme) is not one of ours; name one instead:" >&2
+     echo "  encom-splash encom-os-12" >&2
+     exit 1 ;;
+esac
+
+dir=$(omarchy-theme-dir "$theme" 2>/dev/null) || { echo "No such theme: $theme" >&2; exit 1; }
+[[ -f $dir/unlock.png ]] || { echo "$theme has no unlock.png to put on the splash" >&2; exit 1; }
+
+if cmp -s "$dir/unlock.png" /usr/share/plymouth/themes/omarchy/logo.png; then
+  echo "The boot splash is already $theme's."
+  exit 0
+fi
+
+echo "Setting the boot splash to $theme. This needs sudo and rebuilds the initramfs."
+omarchy plymouth set-by-theme "$theme"

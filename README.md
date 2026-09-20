@@ -141,6 +141,7 @@ cd omarchy-encom-os-12
 - **Run a screensaver now:** `encom-screensaver lightcycles` or `encom-screensaver boardroom`.
 - **Live wallpaper:** `encom-wallpaper on | off | toggle | status`. Install with `--no-wallpaper` to start with it off.
 - **Open the Boardroom as a window:** `encom-boardroom`.
+- **Boot splash:** `encom-splash` puts the current theme's mark on the boot screen and the disk unlock prompt. Those live in the initramfs, so a theme switch can't repaint them on its own — it needs sudo and a rebuild, which is why it's a command rather than automatic. An installed post-update hook keeps it in place afterwards.
 
 ## How it fits together
 

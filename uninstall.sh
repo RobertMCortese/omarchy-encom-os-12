@@ -107,6 +107,7 @@ first=$(ls -d "$STATE"/backup-* 2>/dev/null | sort | head -1 || true)
 remove "$HOME/.local/bin/encom-boardroom"
 remove "$HOME/.local/bin/encom-screensaver"
 remove "$HOME/.local/bin/encom-wallpaper"
+remove "$HOME/.local/bin/encom-splash"
 remove "$OMA/hooks/post-update.d/encom-plymouth.hook"
 remove "$OMA/hooks/post-update.d/encom-lock.hook"
 remove "$OMA/branding/encom.txt"
