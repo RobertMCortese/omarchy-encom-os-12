@@ -597,12 +597,65 @@ Item {
         Connections {
           target: root
           function onCpuChanged() { discCanvas.requestPaint() }
+          function onEncomChanged() { discCanvas.requestPaint() }
+        }
+
+        // A six-sided ring, and how far round its edge a fraction of load
+        // reaches: the wedge themes run on straight lines, not arcs.
+        function hexAt(cx, cy, r, f) {
+          var side = f * 6
+          var i = Math.floor(side), t = side - i
+          var a0 = -Math.PI / 2 + i * Math.PI / 3, a1 = a0 + Math.PI / 3
+          return [cx + (Math.cos(a0) + (Math.cos(a1) - Math.cos(a0)) * t) * r,
+                  cy + (Math.sin(a0) + (Math.sin(a1) - Math.sin(a0)) * t) * r]
+        }
+
+        function hexPath(ctx, cx, cy, r, from, to) {
+          var steps = Math.max(2, Math.ceil((to - from) * 18))
+          for (var k = 0; k <= steps; k++) {
+            var p = discCanvas.hexAt(cx, cy, r, from + (to - from) * k / steps)
+            if (k === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1])
+          }
         }
 
         onPaint: {
           var ctx = getContext("2d")
           ctx.reset()
           var cx = width / 2, cy = height / 2, r = width / 2 - 3
+
+          if (root.encom.sigil === "wedge") {
+            var frac2 = Math.max(0, Math.min(100, root.cpu)) / 100
+            ctx.globalAlpha = 0.85
+            ctx.strokeStyle = root.cyanHi
+            ctx.lineWidth = 1
+            ctx.beginPath(); discCanvas.hexPath(ctx, cx, cy, r, 0, 1); ctx.stroke()
+            ctx.globalAlpha = 0.45
+            ctx.strokeStyle = root.cyan
+            ctx.beginPath(); discCanvas.hexPath(ctx, cx, cy, r * 0.62, 0, 1); ctx.stroke()
+            // Ticks standing off each edge.
+            ctx.globalAlpha = 0.4
+            for (var t2 = 0; t2 < 30; t2++) {
+              var p0 = discCanvas.hexAt(cx, cy, r * 0.8, t2 / 30)
+              var p1 = discCanvas.hexAt(cx, cy, r * 0.93, t2 / 30)
+              ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke()
+            }
+            if (frac2 > 0.005) {
+              ctx.globalAlpha = 0.95
+              ctx.strokeStyle = root.cpu >= 85 ? root.orange : root.cyanHi
+              ctx.lineWidth = 3
+              ctx.beginPath(); discCanvas.hexPath(ctx, cx, cy, r * 0.62, 0, frac2); ctx.stroke()
+            }
+            // The wedge at the middle.
+            ctx.globalAlpha = 0.9
+            ctx.fillStyle = root.cyanHi
+            ctx.beginPath()
+            ctx.moveTo(cx - r * 0.22, cy - r * 0.14)
+            ctx.lineTo(cx + r * 0.22, cy - r * 0.14)
+            ctx.lineTo(cx, cy + r * 0.26)
+            ctx.closePath()
+            ctx.fill()
+            return
+          }
 
           ctx.globalAlpha = 0.85
           ctx.strokeStyle = root.cyanHi

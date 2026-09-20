@@ -215,6 +215,7 @@ def build(name):
     palette = json.loads(swap((BASE / "encom.json").read_text(), mapping))
     palette["portrait"] = PORTRAIT[name]
     palette["brand"] = brand
+    palette["sigil"] = SIGIL.get(name, "disc")
     palette["lockScene"] = LOCK_SCENE.get(name, "duel")
     if name in CLASSIC:
         palette["classic"] = True
@@ -243,6 +244,9 @@ PORTRAIT = {"encom-clu": "sentinel", "dillinger-systems": "own",
 # Whose house this is: the wordmark a theme carries, and the name that
 # goes with it on the bar, the HUD and the lock screen.
 BRAND = {"dillinger-systems": ("DILLINGER SYSTEMS", "dillinger-mark.svg")}
+# The sigil on the bar and the HUD: ENCOM's identity disc, or the wedge —
+# the triangle under the Dillinger wordmark's g, in an angular frame.
+SIGIL = {"dillinger-systems": "wedge"}
 
 # The two sides in Light Cycles and the disc duel. By default they are the
 # theme's accent against its contrast colour; 1982 instead takes the colours

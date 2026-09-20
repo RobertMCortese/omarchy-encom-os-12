@@ -68,21 +68,51 @@ Item {
       opacity: root.hovered ? 1.0 : 0.88
       Behavior on opacity { NumberAnimation { duration: 140 } }
 
+      // Repaint when the theme moves under it: a Canvas does not follow a
+      // bound colour on its own.
+      Connections {
+        target: root
+        function onEncomChanged() { sigil.requestPaint() }
+      }
+
       onPaint: {
         var ctx = getContext("2d")
         ctx.reset()
-        var cx = width / 2, cy = height / 2
+        var cx = width / 2, cy = height / 2, r = cx - 1
+
+        if (root.encom.sigil === "wedge") {
+          // Dillinger's mark: a wedge in a six-sided frame, open at the top
+          // right, after the triangle under the wordmark's g.
+          ctx.strokeStyle = root.cyanHi
+          ctx.lineWidth = 1.2
+          ctx.beginPath()
+          for (var i = 1; i <= 6; i++) {
+            var a = -Math.PI / 2 + i * Math.PI / 3
+            var x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r
+            if (i === 1) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
+          ctx.fillStyle = root.cyan
+          ctx.beginPath()
+          ctx.moveTo(cx - r * 0.52, cy - r * 0.34)
+          ctx.lineTo(cx + r * 0.52, cy - r * 0.34)
+          ctx.lineTo(cx, cy + r * 0.6)
+          ctx.closePath()
+          ctx.fill()
+          return
+        }
+
         ctx.strokeStyle = root.cyanHi
         ctx.lineWidth = 1.2
 
         // Outer ring, broken at the top like a disc seated in its dock.
         ctx.beginPath()
-        ctx.arc(cx, cy, cx - 1, -Math.PI * 0.35, Math.PI * 1.2)
+        ctx.arc(cx, cy, r, -Math.PI * 0.35, Math.PI * 1.2)
         ctx.stroke()
 
         // Inner ring.
         ctx.beginPath()
-        ctx.arc(cx, cy, (cx - 1) * 0.52, 0, Math.PI * 2)
+        ctx.arc(cx, cy, r * 0.52, 0, Math.PI * 2)
         ctx.strokeStyle = root.cyan
         ctx.lineWidth = 1.6
         ctx.stroke()
