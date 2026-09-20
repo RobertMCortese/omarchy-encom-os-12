@@ -83,9 +83,11 @@ Even the pointer: one cursor per theme, built from Adwaita's geometry.
 | **TRON Legacy** | Tron cyan, Clu orange for alarms | PROGRAMS vs CLU |
 | **CLU** | Clu's orange, cyan for alarms | CLU vs PROGRAMS |
 | **Dillinger Systems** | Dillinger red over black, ice-blue alarms, and its own wordmark in place of ENCOM's | DILLINGER vs ENCOM |
-| **TRON 1982** | The first film: electric blue and amber | USERS vs PROGRAMS |
+| **TRON 1982** | The first film: electric blue (`#3b7bff`) and amber | USERS vs PROGRAMS |
 
 Switch with Omarchy's own theme menu, where they're listed as *Tron Legacy*, *Clu*, *Dillinger Systems* and *Tron 1982*, or with `omarchy theme set "Tron Legacy"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
+
+The 1982 blue is the film's own: its wordmark is a `#1688b9` gradient and the transfer sequence peaks around `#3b70f6`, so the theme runs on the blue the original game's cycles were drawn in.
 
 **TRON 1982 goes further.** The light cycles go back to the original game's blue against yellow, and to the pieces that came with the game this screensaver started from: its arena wall panels, its classic cycle model and its light trails, in place of our Legacy-era ones. (One palette key, `classic`, turns all three on.)
 
