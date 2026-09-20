@@ -222,6 +222,7 @@ def build(name):
     out = THEMES_DIR / name
     out.mkdir(parents=True, exist_ok=True)
     mapping = palette_for(accent, contrast)
+    mapping.update(TINT.get(name, {}))
 
     for f in ("colors.toml", "shell.toml"):
         text = swap((BASE / f).read_text(), mapping)
@@ -283,6 +284,12 @@ BRAND = {"dillinger-systems": ("DILLINGER SYSTEMS", "dillinger-mark.svg")}
 # the triangle under the Dillinger wordmark's g, in an angular frame.
 SIGIL = {"dillinger-systems": "wedge"}
 
+# Base colours a theme remaps by hand, before anything is swapped, so the
+# change reaches the terminal and editor palettes too and not just the JSON.
+# A pale tint of a red reads pink, whatever its hue says, so Dillinger's
+# highlight leans towards orange as it lightens instead of washing out.
+TINT = {"dillinger-systems": {"#a8ecff": "#ff8a5c"}}
+
 # Palette keys a theme sets for itself, after the colour swap has run.
 # Uprising's highlight is the Renegade's cool white rather than a pale tint
 # of its jade, because that white against the jade is what the series looks
@@ -292,7 +299,10 @@ SIGIL = {"dillinger-systems": "wedge"}
 OVERRIDE = {"tron-uprising": {"accentHi": "#e6f1ef", "ink": "#04100e",
                               "splash": "#2fd0b0"},
             # The game's black is the system's own dark teal, not neutral.
-            "tron-2-0": {"accentHi": "#cdf08a", "ink": "#061513"}}
+            "tron-2-0": {"accentHi": "#cdf08a", "ink": "#061513"},
+            # Its mark boots in a vivid red rather than the highlight, which
+            # even warmed is too light to read as Dillinger's own colour.
+            "dillinger-systems": {"splash": "#ff2418"}}
 
 # The wordmark on a theme's poster — its preview card and its boot splash.
 # This is the name of the thing, which is not always the mark the desktop

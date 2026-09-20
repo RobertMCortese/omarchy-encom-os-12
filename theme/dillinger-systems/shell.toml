@@ -25,13 +25,13 @@ normal-border-alpha = 0.30
 # Hover / keyboard cursor: the trace energises.
 hover-cursor-color        = "#ffc0bd"
 hover-cursor-fill-alpha   = 0.10
-hover-cursor-border       = "#ff8781"
+hover-cursor-border       = "#ff8a5c"
 hover-cursor-border-width = 1
 hover-cursor-border-alpha = 0.75
 
 focus-color        = "#ffc0bd"
 focus-fill-alpha   = 0.10
-focus-border       = "#ff8781"
+focus-border       = "#ff8a5c"
 focus-border-width = 1
 focus-border-alpha = 0.75
 
@@ -63,7 +63,7 @@ border-width     = 1
 [tooltip]
 background       = "#040202"
 background-alpha = 0.95
-text             = "#ff8781"
+text             = "#ff8a5c"
 border           = "hyprland.active-border-foreground"
 border-alpha     = 0.9
 
@@ -133,7 +133,7 @@ selection-alpha  = 0.45
 scrim                   = "#040202"
 scrim-alpha             = 0.66
 text                    = "#ffa5a0"
-selected-border         = "#ff8781"
+selected-border         = "#ff8a5c"
 selected-border-alpha   = 1.0
 unselected-border       = "#ff3b30"
 unselected-border-alpha = 0.22

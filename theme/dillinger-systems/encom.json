@@ -1,11 +1,11 @@
 {
   "_": "ENCOM palette. Every ENCOM piece (HUD, bar, Light Cycles, lock screen, Boardroom) reads this from the current theme; each falls back to these Tron: Legacy colours if it is missing.",
   "accent": "#ff3b30",
-  "accentHi": "#ff8781",
+  "accentHi": "#ff8a5c",
   "accentDim": "#670c07",
   "contrast": "#7fd0ff",
   "contrastHi": "#ffffff",
-  "alert": "#ff8781",
+  "alert": "#ff8a5c",
   "ink": "#050202",
   "sideAName": "DILLINGER",
   "sideBName": "ENCOM",
@@ -15,7 +15,8 @@
   "sideBHi": "#ffffff",
   "portrait": "own",
   "lockScene": "duel",
+  "cursor": "Dillinger-Systems-Cursor",
   "brand": "DILLINGER SYSTEMS",
   "sigil": "wedge",
-  "cursor": "Dillinger-Systems-Cursor"
+  "splash": "#ff2418"
 }
