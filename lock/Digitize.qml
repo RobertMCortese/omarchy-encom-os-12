@@ -150,7 +150,7 @@ Item {
   })
   readonly property var sc: ({ x0: 0, y0: 0, x1: 0, y1: 0 })
 
-  function look(px, py, pz, tx, ty, tz, fov) {
+  function look(px, py, pz, tx, ty, tz, fov, roll) {
     var c = cam
     var fx = tx - px, fy = ty - py, fz = tz - pz
     var L = Math.sqrt(fx * fx + fy * fy + fz * fz) || 1
@@ -164,9 +164,17 @@ Item {
     c.px = px; c.py = py; c.pz = pz
     c.fx = fx; c.fy = fy; c.fz = fz
     c.rx = rx; c.ry = ry; c.rz = rz
-    c.ux = ry * fz - rz * fy
-    c.uy = rz * fx - rx * fz
-    c.uz = rx * fy - ry * fx
+    var ux = ry * fz - rz * fy
+    var uy = rz * fx - rx * fz
+    var uz = rx * fy - ry * fx
+    if (roll) {
+      // Turn right and up about the line of sight: the bank.
+      var cr = Math.cos(roll), sr = Math.sin(roll)
+      c.rx = rx * cr + ux * sr; c.ry = ry * cr + uy * sr; c.rz = rz * cr + uz * sr
+      c.ux = ux * cr - rx * sr; c.uy = uy * cr - ry * sr; c.uz = uz * cr - rz * sr
+    } else {
+      c.ux = ux; c.uy = uy; c.uz = uz
+    }
     c.f = (height / 2) / Math.tan(fov / 2 * Math.PI / 180)
   }
 
@@ -300,6 +308,12 @@ Item {
   readonly property int tunnelSides: 13
   readonly property real ringGap: 2.4
 
+  // Where the tunnel's middle sits at a given distance along it: a long
+  // lazy curve, so the flight leans left and right instead of running dead
+  // straight.
+  function bendX(z) { return 4.2 * Math.sin(z * 0.04) + 1.5 * Math.sin(z * 0.017 + 2) }
+  function bendY(z) { return 1.6 * Math.sin(z * 0.028 + 1.1) }
+
   property var tvx: []
   property var tvy: []
   property var twx: []
@@ -307,9 +321,11 @@ Item {
 
   function tunnel(t, w) {
     var fly = t * 5.5
-    // A slow drift, so the flight is not dead straight.
-    var dx = Math.sin(t * 0.31) * 0.5, dy = Math.cos(t * 0.24) * 0.35
-    look(dx, dy, fly, dx * 0.4, dy * 0.4, fly + 12, 62)
+    // Fly along the curve, looking up the line of it, banking into the turn.
+    var lead = 11
+    var bank = (bendX(fly + 7) - bendX(fly - 7)) * -0.075
+    look(bendX(fly), bendY(fly), fly,
+         bendX(fly + lead), bendY(fly + lead), fly + lead, 62, bank)
     var first = Math.ceil(fly / ringGap)
     for (var k = 0; k < tunnelRings; k++) {
       var z = (first + k) * ringGap
@@ -318,10 +334,11 @@ Item {
       var rot = z * 0.16
       var fade = w * ease(ahead / 3) * Math.max(0, 1 - ahead / (tunnelRings * ringGap * 0.85))
       if (fade <= 0.005) continue
+      var mx = bendX(z), my = bendY(z)
       for (var s = 0; s < tunnelSides; s++) {
         var a = rot + s * 2 * Math.PI / tunnelSides
-        tvx[s] = Math.cos(a) * r
-        tvy[s] = Math.sin(a) * r
+        tvx[s] = mx + Math.cos(a) * r
+        tvy[s] = my + Math.sin(a) * r
       }
       var bright = ahead > tunnelRings * ringGap * 0.6
       for (var e = 0; e < tunnelSides; e++) {
@@ -343,18 +360,20 @@ Item {
       for (var e2 = 0; e2 < tunnelSides; e2 += 2) {
         var aa = rota + e2 * 2 * Math.PI / tunnelSides
         var ab = rotb + (e2 + 5) * 2 * Math.PI / tunnelSides
-        edge(Math.cos(aa) * ra, Math.sin(aa) * ra, za,
-             Math.cos(ab) * rb, Math.sin(ab) * rb, zb2, 1.2, fadec * 0.6, 0)
+        edge(bendX(za) + Math.cos(aa) * ra, bendY(za) + Math.sin(aa) * ra, za,
+             bendX(zb2) + Math.cos(ab) * rb, bendY(zb2) + Math.sin(ab) * rb, zb2,
+             1.2, fadec * 0.6, 0)
       }
     }
     // The way out: square frames nested at the end of the tunnel.
     var gz = fly + tunnelRings * ringGap * 0.98
+    var gx = bendX(gz), gy = bendY(gz)
     for (var f2 = 0; f2 < 3; f2++) {
       var hs = 2.6 - f2 * 0.75
-      edge(-hs, -hs, gz, hs, -hs, gz, 1.6, w * 0.8, 1)
-      edge(hs, -hs, gz, hs, hs, gz, 1.6, w * 0.8, 1)
-      edge(hs, hs, gz, -hs, hs, gz, 1.6, w * 0.8, 1)
-      edge(-hs, hs, gz, -hs, -hs, gz, 1.6, w * 0.8, 1)
+      edge(gx - hs, gy - hs, gz, gx + hs, gy - hs, gz, 1.6, w * 0.8, 1)
+      edge(gx + hs, gy - hs, gz, gx + hs, gy + hs, gz, 1.6, w * 0.8, 1)
+      edge(gx + hs, gy + hs, gz, gx - hs, gy + hs, gz, 1.6, w * 0.8, 1)
+      edge(gx - hs, gy + hs, gz, gx - hs, gy - hs, gz, 1.6, w * 0.8, 1)
     }
     plates(t, w, fly)
   }
@@ -383,7 +402,8 @@ Item {
       // Off to one side of the axis, so it sweeps past rather than through.
       var swing = p * 1.9 + t * 0.14
       var rad = 2.2 + 1.9 * Math.sin(p * 2.3 + t * 0.21)
-      var ox = Math.cos(swing) * rad, oy = Math.sin(swing) * rad
+      var ox = bendX(zc) + Math.cos(swing) * rad
+      var oy = bendY(zc) + Math.sin(swing) * rad
       // The plane it lies in, tumbling slowly.
       var th = t * 0.3 + p * 1.4, ph = t * 0.19 + p * 2.1
       var st = Math.sin(th), ct = Math.cos(th), sp = Math.sin(ph), cp = Math.cos(ph)
@@ -437,7 +457,7 @@ Item {
     var dist = 2.15 - 0.35 * Math.sin(t * 0.07)
     var camx = Math.cos(swing) * dist, camz = Math.sin(swing) * dist
     var camy = 0.95 + 0.25 * Math.sin(t * 0.09)
-    look(camx, camy, camz, 0, -0.42, 0, 58)
+    look(camx, camy, camz, 0, -0.42, 0, 58, 0)
     var c = cam
     for (var i = 1; i < lat; i++) {
       var th = i * Math.PI / lat
@@ -509,7 +529,7 @@ Item {
     var fly = t * 7
     var drop = 1 + 5 * Math.max(0, 1 - ((t % cycle) / cycle - 0.72) * 9)
     look(Math.sin(t * 0.2) * 1.5, 1.6 + drop * 0.6, fly,
-         0, 0.8 + drop * 0.3, fly + 14, 60)
+         0, 0.8 + drop * 0.3, fly + 14, 60, 0)
     var first = Math.ceil(fly / gridStep)
     var span = 13
     // Lines across, marching towards the camera.
