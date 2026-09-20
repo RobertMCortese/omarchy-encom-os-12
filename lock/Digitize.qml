@@ -13,10 +13,11 @@ import QtQuick
 //      axis, each turned a little further than the last, with the camera
 //      flying down the middle of them.
 //   3  THE FIELD  The way out of the tunnel is a port of nested squares
-//      that flies at the camera and opens onto a board: traces running away
-//      in two directions, rows of dots, patches of dot matrix, and beads of
-//      light travelling along the tracks, with the camera panning and
-//      rolling as it crosses.
+//      that flies at the camera and opens onto sheets of board, stacked one
+//      behind another: traces, rows of dots, patches of dot matrix, vias and
+//      beads of light running along tracks. The camera flies through the
+//      stack, panning and spinning, and each sheet sweeps out past the edges
+//      of the frame as it passes.
 //   4  THE PLANET  A wireframe sphere with slabs standing on its surface and
 //      beams cutting across it, the camera falling towards the limb. Only the
 //      near face is drawn — the back of the sphere is culled away.
@@ -309,8 +310,8 @@ Item {
   // Rings threaded along the axis, each turned further than the last. The
   // camera flies down the middle; rings behind it are recycled ahead, so the
   // flight never ends.
-  readonly property int tunnelRings: 22
-  readonly property int tunnelSides: 13
+  readonly property int tunnelRings: 18
+  readonly property int tunnelSides: 12
   readonly property real ringGap: 2.4
 
   // Where the tunnel's middle sits at a given distance along it: a long
@@ -346,12 +347,19 @@ Item {
         tvy[s] = my + Math.sin(a) * r
       }
       var bright = ahead > tunnelRings * ringGap * 0.6
+      // Triangles: each ring's own edges, then two diagonals back to the
+      // ring behind, so the wall comes out as bands of triangles rather
+      // than a ladder of squares.
+      var lean = (k % 2) ? 1 : 0
       for (var e = 0; e < tunnelSides; e++) {
         var n = (e + 1) % tunnelSides
         edge(tvx[e], tvy[e], z, tvx[n], tvy[n], z, 1.5, fade, bright ? 1 : 0)
-        // Back to the ring behind: the long lines running down the tunnel.
-        if (k > 0)
-          edge(tvx[e], tvy[e], z, twx[e], twy[e], z - ringGap, 1.2, fade * 0.55, 0)
+        if (k > 0) {
+          var b1 = (e + lean) % tunnelSides
+          var b2 = (e + 1 - lean + tunnelSides) % tunnelSides
+          edge(tvx[e], tvy[e], z, twx[b1], twy[b1], z - ringGap, 1.2, fade * 0.6, 0)
+          edge(tvx[n], tvy[n], z, twx[b2], twy[b2], z - ringGap, 1.1, fade * 0.45, 0)
+        }
       }
       for (var q = 0; q < tunnelSides; q++) { twx[q] = tvx[q]; twy[q] = tvy[q] }
     }
@@ -448,10 +456,9 @@ Item {
   }
 
   // ── 3. The field ──────────────────────────────────────────────────────
-  // A board laid out in tiles. Which features a tile carries is decided by
-  // its coordinates, not by chance, so the board is the same every time the
-  // camera passes that spot and it can run for ever without being stored.
-  readonly property real tile: 4.6
+  // Sheets of board, one behind another along the way ahead, flown through
+  // rather than over. What a sheet carries is decided by its number, not by
+  // chance, so nothing has to be stored and it can run for ever.
 
   function hash(a, b) {
     var v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453
@@ -470,87 +477,83 @@ Item {
     else draw(sx - ss / 2, sy, sx + ss / 2, sy, ss, alpha)
   }
 
-  function board(t, w, fly, span) {
-    var i0 = Math.floor((fly - 3 * tile) / tile)
-    for (var i = 0; i < 18; i++) {
-      var zc = (i0 + i) * tile
-      var near = zc - fly
-      var fade = w * ease((near + 13) / 6) * Math.max(0, 1 - near / (15 * tile))
-      if (fade <= 0.006) continue
-      for (var j = -span; j <= span; j++) {
-        var xc = j * tile
-        var h = hash(i0 + i, j)
-        var h2 = hash(j, i0 + i)
-        var h3 = hash(i0 + i + 31, j - 17)
-        // A trace or two through every tile, so the board never thins out.
-        var base = (hash(i0 + i + 7, j + 13) - 0.5) * tile * 0.85
-        if (h3 < 0.5)
-          edge(xc + base, 0, zc, xc + base, 0, zc + tile, 1.2, fade * 0.7, 0)
-        else
-          edge(xc, 0, zc + base, xc + tile, 0, zc + base, 1.2, fade * 0.7, 0)
-        if (h < 0.34) {
-          // Traces: long runs, some along the board, some across it.
-          var runs = 2 + Math.floor(h2 * 3)
-          for (var r = 0; r < runs; r++) {
-            var off = (hash(i0 + i + r, j * 3) - 0.5) * tile * 0.8
-            var len = tile * (0.45 + hash(j + r, i0 + i) * 0.5)
-            var pool = h3 < 0.25 ? 1 : 0
-            if (h2 < 0.5)
-              edge(xc + off, 0, zc, xc + off, 0, zc + len, 1.3, fade * 0.9, pool)
-            else
-              edge(xc, 0, zc + off, xc + len, 0, zc + off, 1.3, fade * 0.9, pool)
-          }
-        } else if (h < 0.62) {
-          // A row of dots, evenly spaced, running one way or the other.
-          var n = 9 + Math.floor(h3 * 7)
-          var gap = tile / n
-          var lane = (h2 - 0.5) * tile * 0.7
-          for (var k = 0; k < n; k++) {
-            if (h2 < 0.5) dot(xc + lane, 0, zc + k * gap, 0.07, fade * 0.8, 0)
-            else dot(xc + k * gap, 0, zc + lane, 0.07, fade * 0.8, 0)
-          }
-        } else if (h < 0.82) {
-          // A patch of dot matrix: the fragments of grid on the board.
-          var cols = 4 + Math.floor(h2 * 4), rows = 3 + Math.floor(h3 * 4)
-          var step = tile * 0.12
-          var bxp = xc - cols * step / 2, bzp = zc - rows * step / 2
-          for (var cc = 0; cc < cols; cc++)
-            for (var rr = 0; rr < rows; rr++)
-              dot(bxp + cc * step, 0, bzp + rr * step, 0.055,
-                  fade * (0.5 + 0.45 * hash(cc + i, rr + j)), h3 < 0.4 ? 1 : 0)
-        } else {
-          // Vias: a few lone warm dots.
-          for (var v = 0; v < 4; v++)
-            dot(xc + (hash(v + i, j) - 0.5) * tile, 0, zc + (hash(j, v + i) - 0.5) * tile,
-                0.1, fade, 2)
+  // The layers: sheets of board stacked along the way ahead, each with its
+  // own scatter of traces, dot rows, dot matrix and vias. The camera flies
+  // through them one after another rather than over any one of them, so a
+  // sheet's pattern sweeps outward past the edges of the frame as it comes.
+  readonly property int layerCount: 9
+  readonly property real layerGap: 5.2
+
+  function sheet(t, w, n, zc, fade) {
+    for (var f = 0; f < 15; f++) {
+      var hx = hash(n * 3 + f, f), hy = hash(f * 7, n - f), hk = hash(n + f * 11, f - n)
+      var px = (hx - 0.5) * 34, py = (hy - 0.5) * 21
+      var flat = hash(f, n) < 0.5
+      if (hk < 0.3) {
+        // A trace, or a ladder of them.
+        var runs = 1 + Math.floor(hash(n, f * 5) * 4)
+        var len = 3 + hash(f * 3, n) * 13
+        for (var r = 0; r < runs; r++) {
+          var step = r * 0.5
+          if (flat) edge(px, py + step, zc, px + len, py + step, zc, 1.3, fade * 0.9, 0)
+          else edge(px + step, py, zc, px + step, py + len, zc, 1.3, fade * 0.9, 0)
         }
-        // Beads of light, running along a track through the tile.
-        if (h2 > 0.78) {
-          var beads = 7
-          var travel = ((t * 0.45 + h) % 1) * tile * 2 - tile * 0.5
-          for (var b2 = 0; b2 < beads; b2++) {
-            var slide = travel - b2 * 0.26
-            var lit = fade * (1 - b2 / beads)
-            if (h3 < 0.5) dot(xc + (h - 0.5) * tile, 0.02, zc + slide, 0.11, lit, 1)
-            else dot(xc + slide, 0.02, zc + (h - 0.5) * tile, 0.11, lit, 1)
-          }
+      } else if (hk < 0.56) {
+        // A row of evenly spaced dots.
+        var cnt = 8 + Math.floor(hash(f, n * 2) * 8)
+        for (var d = 0; d < cnt; d++) {
+          if (flat) dot(px + d * 0.45, py, zc, 0.06, fade * 0.85, 0)
+          else dot(px, py + d * 0.45, zc, 0.06, fade * 0.85, 0)
+        }
+      } else if (hk < 0.76) {
+        // A patch of dot matrix: the fragments of grid.
+        var cols = 4 + Math.floor(hash(n, f) * 3), rows = 3 + Math.floor(hash(f, f + n) * 3)
+        for (var cc = 0; cc < cols; cc++)
+          for (var rr = 0; rr < rows; rr++)
+            dot(px + cc * 0.42, py + rr * 0.42, zc, 0.05,
+                fade * (0.45 + 0.5 * hash(cc + f, rr + n)), hash(f + rr, cc) < 0.3 ? 1 : 0)
+      } else if (hk < 0.88) {
+        // Vias: lone warm dots.
+        for (var v = 0; v < 3; v++)
+          dot(px + v * 0.8, py + (hash(v, f) - 0.5) * 2, zc, 0.09, fade, 2)
+      } else {
+        // Beads of light running along a track, with a tail behind them.
+        var travel = ((t * 0.5 + hx) % 1) * 9 - 2
+        for (var b2 = 0; b2 < 7; b2++) {
+          var slide = travel - b2 * 0.3
+          var lit = fade * (1 - b2 / 7)
+          if (flat) dot(px + slide, py, zc, 0.1, lit, 1)
+          else dot(px, py + slide, zc, 0.1, lit, 1)
         }
       }
     }
   }
 
+  function layers(t, w, fly) {
+    var first = Math.floor(fly / layerGap) + 1
+    for (var l = -1; l < layerCount; l++) {
+      var n = first + l
+      var zc = n * layerGap
+      var near = zc - fly
+      // Up as it comes into view, out again as it sweeps past the camera.
+      var fade = w * ease((near - 0.6) / 2.5)
+                   * Math.max(0, 1 - near / (layerCount * layerGap * 0.9))
+      if (fade <= 0.006) continue
+      sheet(t, w, n, zc, fade)
+    }
+  }
+
   function fieldRide(t, w, age) {
-    var fly = t * 6.5
+    var fly = t * 7.5
     // Panning and rolling as it crosses the board.
-    var yaw = Math.sin(t * 0.16) * 0.5
-    var roll = Math.sin(t * 0.1) * 0.28
-    var hgt = 4.2 + 1.1 * Math.sin(t * 0.13)
-    var side = Math.sin(t * 0.08) * 4
-    // Aimed down at the board, so it fills the frame rather than running off
-    // as a band across the corner.
-    look(side, hgt, fly,
-         side + Math.sin(yaw) * 4.5, 0, fly + Math.cos(yaw) * 4.5, 66, roll)
-    board(t, w, fly, 9)
+    var yaw = Math.sin(t * 0.17) * 0.32
+    var roll = Math.sin(t * 0.11) * 0.55
+    var rise = Math.sin(t * 0.13) * 2.2
+    var side = Math.sin(t * 0.09) * 2.6
+    // Pointed along the stack, panning and spinning as it goes through.
+    look(side, rise, fly,
+         side + Math.sin(yaw) * 9, rise * 0.4, fly + Math.cos(yaw) * 9, 68, roll)
+    layers(t, w, fly)
     // The port: nested squares that fly at the camera and open out.
     if (age < 3.4) {
       var app = 1 - age / 3.4
@@ -558,10 +561,10 @@ Item {
         var pz = fly + 0.6 + app * 30 + n * 1.6
         var hs = 2.4 + n * 0.85
         var pa = w * ease(app * 2.2) * (1 - n * 0.15)
-        edge(side - hs, hgt - hs, pz, side + hs, hgt - hs, pz, 1.7, pa, 1)
-        edge(side + hs, hgt - hs, pz, side + hs, hgt + hs, pz, 1.7, pa, 1)
-        edge(side + hs, hgt + hs, pz, side - hs, hgt + hs, pz, 1.7, pa, 1)
-        edge(side - hs, hgt + hs, pz, side - hs, hgt - hs, pz, 1.7, pa, 1)
+        edge(side - hs, rise - hs, pz, side + hs, rise - hs, pz, 1.7, pa, 1)
+        edge(side + hs, rise - hs, pz, side + hs, rise + hs, pz, 1.7, pa, 1)
+        edge(side + hs, rise + hs, pz, side - hs, rise + hs, pz, 1.7, pa, 1)
+        edge(side - hs, rise + hs, pz, side - hs, rise - hs, pz, 1.7, pa, 1)
       }
     }
   }
