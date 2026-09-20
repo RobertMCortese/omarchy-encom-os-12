@@ -39,6 +39,44 @@ say()  { printf '\e[36m::\e[0m %s\n' "$*"; }
 warn() { printf '\e[33m!!\e[0m %s\n' "$*" >&2; }
 run()  { if (( DRY )); then printf '   would run: %s\n' "$*"; else "$@"; fi; }
 
+# Omarchy shell IPC times out after 2s. The shell rebuilds its plugin set as
+# files land in ~/.config/omarchy/plugins/ and, on several monitors with many
+# plugins, a rebuild can outlast that window, so plugin clone/enable can fail
+# against a busy shell. Retry until the rebuild settles.
+retry() {
+  local tries=$1; shift
+  if (( DRY )); then printf '   would run: %s\n' "$*"; return 0; fi
+  local i
+  for (( i = 0; i < tries; i++ )); do
+    "$@" >/dev/null 2>&1 && return 0
+    sleep 1
+  done
+  "$@"
+}
+
+# Bring the shell to a clean, idle instance. As plugin files land in
+# ~/.config/omarchy/plugins/ the running shell rebuilds its plugin set, and
+# on several monitors one rebuild can outlast Omarchy's 2s plugin IPC timeout
+# and chain into more reloads, so clone/enable can fail against a busy shell.
+# Restart first, then wait until the registry answers promptly: a restarted
+# shell keeps loading plugins for a few seconds after ping first answers, and
+# the clone/enable that follows needs that to settle. Refused while locked is
+# tolerated; the step's own retry still runs against the live shell then.
+settle() {
+  retry 2 omarchy restart shell || true
+  if (( ! DRY )); then
+    local ok=0 i
+    for (( i = 0; i < 40; i++ )); do
+      if timeout 2 omarchy-shell shell listPlugins >/dev/null 2>&1; then
+        (( ++ok >= 3 )) && break
+      else
+        ok=0
+      fi
+      sleep 0.5
+    done
+  fi
+}
+
 # Copy a file or directory into place, backing up whatever was there first.
 put() {
   local src=$1 dst=$2
@@ -184,13 +222,15 @@ put "$REPO/bar/scripts/encom-telemetry" "$OMA/bar/scripts/encom-telemetry"
 # ── HUD ────────────────────────────────────────────────────────────────────
 say "HUD: desktop panels, boot cascade, alerts, screensaver trigger"
 put_own "$REPO/hud" "$OMA/plugins/encom.hud"
-run omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-run omarchy plugin enable encom.hud >/dev/null
+settle
+retry 8 omarchy plugin enable encom.hud
 
 # ── Workspace nodes and chamfered launcher (clones of Omarchy's own) ─────
 say "Shell: workspace nodes and the chamfered launcher"
+settle
 if [[ ! -d $OMA/plugins/$USER_ID.workspaces ]]; then run omarchy plugin clone omarchy.workspaces >/dev/null; fi
 put "$REPO/shell/workspaces/Workspaces.qml" "$OMA/plugins/$USER_ID.workspaces/Workspaces.qml"
+settle
 if [[ ! -d $OMA/plugins/$USER_ID.menu ]]; then run omarchy plugin clone omarchy.menu >/dev/null; fi
 put "$REPO/shell/menu/encom-chamfer-patch.py" "$OMA/plugins/$USER_ID.menu/encom-chamfer-patch.py"
 run python3 "$OMA/plugins/$USER_ID.menu/encom-chamfer-patch.py" >/dev/null
@@ -207,8 +247,8 @@ m.get("entryPoints", {}).pop("barWidget", None); m.pop("barWidget", None)
 json.dump(m, open(p, "w"), indent=2); open(p, "a").write("\n")
 PYEOF2
 fi
-run omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-run omarchy plugin enable "$USER_ID.menu" >/dev/null
+settle
+retry 8 omarchy plugin enable "$USER_ID.menu"
 
 # Bar layout: ENCOM ident and workspace nodes on the left, gauges first on
 # the right. Everything else in your layout is left where it is.
@@ -242,11 +282,13 @@ fi
 # and fingerprint handling) stays Omarchy's own. encom-lock.hook refreshes the
 # clone from omarchy.lock after every Omarchy update.
 say "Lock screen: disc wars (Omarchy's lock, with the scene added)"
+settle
 if [[ ! -d $OMA/plugins/$USER_ID.lock ]]; then run omarchy plugin clone omarchy.lock >/dev/null; fi
 put "$REPO/lock/DiscWars.qml" "$OMA/plugins/$USER_ID.lock/DiscWars.qml"
 put "$REPO/lock/poses.js" "$OMA/plugins/$USER_ID.lock/poses.js"
 put "$REPO/lock/encom-lock-patch.py" "$OMA/plugins/$USER_ID.lock/encom-lock-patch.py"
 put "$REPO/hooks/encom-lock.hook" "$OMA/hooks/post-update.d/encom-lock.hook"
+settle
 if (( ! DRY )); then
   rm -f "$OMA/plugins/$USER_ID.lock/.upstream-sha256"       # force a refresh now
   bash "$OMA/hooks/post-update.d/encom-lock.hook"
