@@ -72,11 +72,11 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 
 The same desktop comes in four colours. Everything above follows the one you pick: the terminal and editor palettes, the wallpapers, the logo, the boot splash, the HUD and bar, the alerts and their portrait, the light cycles, the lock screen and the Boardroom projection.
 
-![The four themes](docs/themes.png)
+![The four themes](docs/four-themes.png)
 
 Even the pointer: one cursor per theme, built from Adwaita's geometry.
 
-![The four cursors](docs/cursors.png)
+![The four cursors](docs/theme-cursors.png)
 
 | Theme | | The sides |
 |---|---|---|
