@@ -58,7 +58,7 @@ Item {
   readonly property real cy: height * 0.38
   readonly property real reach: Math.min(width * 0.6, height * 0.92)
 
-  readonly property real cycle: 56          // one full ride, in seconds
+  readonly property real cycle: 64          // one full ride, in seconds
 
   Rectangle { anchors.fill: parent; color: field.ink; z: -100 }
 
@@ -464,6 +464,30 @@ Item {
   readonly property int plateCount: 7
   readonly property int plateRule: 3          // grid lines ruled across a cell
 
+  // One plate: a tetromino of cells, each ruled into a grid, laid on
+  // whatever pair of axes it is handed. The tunnel tumbles them; the clouds
+  // lay them flat.
+  function plate(ox, oy, oz, ux, uy, uz, vx, vy, vz, cell, shapeIx, rule, alpha, pool) {
+    var shape = tetro[shapeIx % tetro.length]
+    for (var q = 0; q < shape.length; q++) {
+      var gx = (shape[q][0] - 1) * cell, gy = (shape[q][1] - 1.5) * cell
+      for (var r = 0; r <= rule + 1; r++) {
+        var f = r / (rule + 1)
+        var rim = (r === 0 || r === rule + 1)
+        var th = rim ? 1.5 : 1
+        var a = alpha * (rim ? 1 : 0.5)
+        var uA = gx, uB = gx + cell, vA = gy + f * cell
+        edge(ox + ux * uA + vx * vA, oy + uy * uA + vy * vA, oz + uz * uA + vz * vA,
+             ox + ux * uB + vx * vA, oy + uy * uB + vy * vA, oz + uz * uB + vz * vA,
+             th, a, pool)
+        var uC = gx + f * cell, vC = gy, vD = gy + cell
+        edge(ox + ux * uC + vx * vC, oy + uy * uC + vy * vC, oz + uz * uC + vz * vC,
+             ox + ux * uC + vx * vD, oy + uy * uC + vy * vD, oz + uz * uC + vz * vD,
+             th, a, pool)
+      }
+    }
+  }
+
   function plates(t, w, flyZ) {
     var run = 46                              // how far a plate travels
     for (var p = 0; p < plateCount; p++) {
@@ -485,31 +509,7 @@ Item {
       var fade = w * ease((ahead + 6) / 8) * Math.max(0, 1 - ahead / 34)
       if (fade <= 0.006) continue
       var pool = p % 2 ? 2 : 1
-      var shape = tetro[p % tetro.length]
-      for (var q = 0; q < shape.length; q++) {
-        var gx = (shape[q][0] - 1) * cell, gy = (shape[q][1] - 1.5) * cell
-        // The cell's four sides, then the lines ruled across it.
-        for (var r = 0; r <= plateRule + 1; r++) {
-          var f = r / (plateRule + 1)
-          var edgeLine = (r === 0 || r === plateRule + 1)
-          var thick = edgeLine ? 1.5 : 1
-          var a = fade * (edgeLine ? 1 : 0.5)
-          // across
-          edge(ox + ux * gx + vx * (gy + f * cell) + nx * 0,
-               oy + uy * gx + vy * (gy + f * cell),
-               zc + uz * gx + vz * (gy + f * cell),
-               ox + ux * (gx + cell) + vx * (gy + f * cell),
-               oy + uy * (gx + cell) + vy * (gy + f * cell),
-               zc + uz * (gx + cell) + vz * (gy + f * cell), thick, a, pool)
-          // and down
-          edge(ox + ux * (gx + f * cell) + vx * gy,
-               oy + uy * (gx + f * cell) + vy * gy,
-               zc + uz * (gx + f * cell) + vz * gy,
-               ox + ux * (gx + f * cell) + vx * (gy + cell),
-               oy + uy * (gx + f * cell) + vy * (gy + cell),
-               zc + uz * (gx + f * cell) + vz * (gy + cell), thick, a, pool)
-        }
-      }
+      plate(ox, oy, zc, ux, uy, uz, vx, vy, vz, cell, p, plateRule, fade, pool)
     }
   }
 
@@ -637,11 +637,11 @@ Item {
   //
   // This act carries the colours the sequence itself has — blue ground, red
   // beams, a green beacon, a magenta horizon — rather than the theme's.
-  readonly property real arriveFor: 24        // seconds the act runs
+  readonly property real arriveFor: 29        // seconds the act runs
   readonly property real flySpeed: 9
   readonly property real curveR: 155          // how fast the surface falls away
   readonly property real cloudAlt: 9.5
-  readonly property real beaconZ: 165
+  readonly property real beaconZ: 220
 
   function terrain(x, z) {
     return 1.5 * Math.sin(x * 0.085) * Math.cos(z * 0.062)
@@ -670,19 +670,19 @@ Item {
     // High over the clouds, down through them, low across the plain, then
     // up again on the approach so the structure fits in the frame when the
     // camera comes over the top of it.
-    var alt = age < 6.5 ? 20 - age * 0.75
-            : age < 9.5 ? 15.1 - (age - 6.5) * 2.8
-            : age < 14 ? 6.7 - (age - 9.5) * 0.2
-            : age < 18.5 ? 5.8 + (age - 14) * 2.2
-            : 15.7 + (age - 18.5) * 0.6
+    var alt = age < 12 ? 24 - age * 0.55
+            : age < 15.5 ? 17.4 - (age - 12) * 3
+            : age < 20 ? 6.9 - (age - 15.5) * 0.2
+            : age < 25 ? 6 + (age - 20) * 2
+            : 16 + (age - 25) * 0.6
     var side = Math.sin(age * 0.23) * 3.4
     // From orbit the world is a ball; down among it, it is a plain with a
     // horizon, so the curve slackens as we come down.
-    curveNow = 155 + 950 * ease((age - 5.5) / 6)
+    curveNow = 210 + 1100 * ease((age - 11) / 6)
     // Once the beacon is in sight the camera keeps its eye on it, so it tips
     // down and back as it passes over the top of it.
-    var track = ease((age - 13) / 3.5)
-    var amp0 = ease((age - 5.5) / 3.5)
+    var track = ease((age - 19) / 4)
+    var amp0 = ease((age - 11.5) / 4)
     // The camera rides the ground rather than a fixed height, or the ridges
     // come up through it once we are down low.
     var camY = terrain(side, fly) * amp0 + alt
@@ -699,11 +699,11 @@ Item {
     var r, c
     // Once the camera turns to watch the beacon go by it is looking behind
     // itself, so the ground has to start back there too.
-    var back = 75 * ease((age - 13.5) / 3.5)
-    for (c = 0; c <= gCols; c++) gx0[c] = side + (c - gCols / 2) * 9.5
+    var back = 75 * ease((age - 19.5) / 4)
+    for (c = 0; c <= gCols; c++) gx0[c] = side + (c - gCols / 2) * 15
     for (r = 0; r <= gRows; r++) {
-      var z = fly + 4 - back + r * 5 + r * r * 1.35
-      var zn = fly + 4 - back + (r + 1) * 5 + (r + 1) * (r + 1) * 1.35
+      var z = fly + 4 - back + r * 6 + r * r * 1.9
+      var zn = fly + 4 - back + (r + 1) * 6 + (r + 1) * (r + 1) * 1.9
       var far = fade * Math.max(0, 1 - r / (gRows + 1.5))
       if (far <= 0.006) continue
       for (c = 0; c <= gCols; c++) {
@@ -719,22 +719,22 @@ Item {
       }
     }
 
-    // Grid plates floating over the surface: the clouds.
-    for (var p2 = 0; p2 < 16; p2++) {
-      var pz = fly + 20 + ((p2 * 37.3 + age * 6) % 150)
-      var px = side + (hash(p2, 1) - 0.5) * 90
-      var py = surfaceY(px, pz, side, fly, amp) + cloudAlt + hash(1, p2) * 3
-      var pw = 7 + hash(p2, 5) * 12, pd = 5 + hash(5, p2) * 9
-      var pf = fade * Math.max(0, 1 - (pz - fly) / 150) * ease((pz - fly - 4) / 8)
+    // Grid plates floating over the surface: the clouds. They are the same
+    // shapes the tunnel throws past, laid flat, and they sit still in the
+    // world — the camera comes to them rather than them running away.
+    var cloudStep = 26
+    var firstCloud = Math.floor(fly / cloudStep)
+    for (var p2 = 0; p2 < 11; p2++) {
+      var ci = firstCloud + p2
+      var pz = ci * cloudStep + (hash(ci, 2) - 0.5) * 16
+      var px = (hash(ci, 1) - 0.5) * 185
+      var py = surfaceY(px, pz, side, fly, amp) + cloudAlt + hash(1, ci) * 7
+      var ahead2 = pz - fly
+      var pf = fade * ease((ahead2 - 2) / 10) * Math.max(0, 1 - ahead2 / (11 * cloudStep))
       if (pf <= 0.006) continue
-      var ruleN = 3
-      for (var q2 = 0; q2 <= ruleN; q2++) {
-        var fq = q2 / ruleN
-        edge(px - pw, py, pz - pd + fq * 2 * pd, px + pw, py, pz - pd + fq * 2 * pd,
-             q2 === 0 || q2 === ruleN ? 1.5 : 1, pf * (q2 % ruleN ? 0.5 : 1), 1)
-        edge(px - pw + fq * 2 * pw, py, pz - pd, px - pw + fq * 2 * pw, py, pz + pd,
-             q2 === 0 || q2 === ruleN ? 1.5 : 1, pf * (q2 % ruleN ? 0.5 : 1), 1)
-      }
+      // Far ones keep their outline only; near ones show their ruling.
+      plate(px, py, pz, 1, 0, 0, 0, 0, 1,
+            5.5 + hash(ci, 7) * 5.5, ci, ahead2 < 80 ? 2 : 0, pf, 1)
     }
 
     // Red beams standing off the dark cities we pass.
@@ -748,10 +748,10 @@ Item {
 
     // The green beam, and the C it comes out of.
     var sy = surfaceY(0, beaconZ, side, fly, amp)
-    var bcf = fade * Math.max(0, 1 - Math.abs(beaconZ - fly) / 210)
+    var bcf = fade * ease((age - 13.5) / 2.5) * Math.max(0, 1 - (beaconZ - fly) / 260)
     beamGreen(0, beaconZ, sy, sy + 95, bcf)
-    if (beaconZ - fly < 120) {
-      var near = fade * ease((120 - (beaconZ - fly)) / 40)
+    if (beaconZ - fly < 130 && age > 14) {
+      var near = fade * ease((130 - (beaconZ - fly)) / 45) * ease((age - 14) / 2)
       // The C: a ring with a gap in it, walls standing off the ground.
       var segs = 24
       for (var s2 = 0; s2 < segs; s2++) {
@@ -812,7 +812,7 @@ Item {
     var wKal = weigh(u, 0.01, 0.12, 0.028)
     var wTun = weigh(u, 0.15, 0.32, 0.028)
     var wFld = weigh(u, 0.35, 0.55, 0.022)
-    var wArr = weigh(u, 0.57, 0.995, 0.018)
+    var wArr = weigh(u, 0.545, 0.995, 0.016)
     var open = ease(Math.min(1, t / 2))     // fade up on load
 
     if (wKal > 0.01) {
@@ -825,9 +825,9 @@ Item {
     if (wTun > 0.01) tunnel(t, wTun * open)
     if (wFld > 0.01) fieldRide(t, wFld * open, (u - 0.35) * cycle)
     if (wArr > 0.01) {
-      var age = (u - 0.57) * cycle
+      var age = (u - 0.545) * cycle
       // Out through a green kaleidoscope, which hands back to the opening.
-      var out = ease((age - 18.6) / 1.9)
+      var out = ease((age - 24.8) / 2)
       palette(out > 0.12 ? 3 : 2)
       if (out < 1) arrival(t, wArr * open * (1 - out) * (1 - out), age)
       else sky.opacity = 0
