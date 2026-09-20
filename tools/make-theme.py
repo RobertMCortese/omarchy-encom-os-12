@@ -42,8 +42,8 @@ FAMILY = {
 VARIANTS = {
     "encom-clu": ("#ff9d2e", "#38c6f4", "ENCOM OS-12 — Clu",
                   "Clu's grid: amber circuitry, cold cyan alarms."),
-    "encom-ares": ("#ff3b30", "#7fd0ff", "ENCOM OS-12 — Ares",
-                   "Red sector: crimson circuitry, ice-blue alarms."),
+    "dillinger-systems": ("#ff3b30", "#7fd0ff", "Dillinger Systems",
+                          "Dillinger's grid: crimson circuitry, ice-blue alarms."),
     "encom-tron-82": ("#b06cff", "#ffc300", "ENCOM OS-12 — 1982",
                       "The first grid: violet circuitry, amber alarms."),
 }
@@ -171,9 +171,8 @@ def wallpapers(out, accent, accent_hi, ink):
         svg_file.unlink()
 
 
-def logo_art(out, accent, accent_hi, ink):
-    """The ENCOM mark in the theme's colour: boot splash and preview art."""
-    mark = BASE / "logo" / "encom-mark.svg"
+def logo_art(out, accent, accent_hi, ink, mark):
+    """The theme's wordmark in its own colour: boot splash and preview art."""
     tmp = out / "_mark.png"
     run(["rsvg-convert", "-w", "760", "-o", str(tmp), str(mark)])
     run(["magick", str(tmp), "-background", "none", "-fill", accent_hi, "-colorize", "100",
@@ -201,10 +200,21 @@ def build(name):
                       "# " + blurb, text, count=1, flags=re.M)
         (out / f).write_text(text)
     shutil.copy(BASE / "icons.theme", out / "icons.theme")
-    shutil.copytree(BASE / "logo", out / "logo", dirs_exist_ok=True)
+    # A theme with a wordmark of its own keeps it; the rest take ENCOM's.
+    brand, markname = BRAND.get(name, ("ENCOM OS-12", "encom-mark.svg"))
+    own = THEMES_DIR / name / "logo" / markname
+    if not own.exists():
+        shutil.copytree(BASE / "logo", out / "logo", dirs_exist_ok=True)
+    else:
+        shutil.copy(BASE / "logo" / "ascii.py", out / "logo" / "ascii.py")
+    mark = out / "logo" / markname
+    # Everything that draws the mark reads logo/mark.svg from whichever theme
+    # is current, so it follows a theme switch without being told.
+    shutil.copy(mark, out / "logo" / "mark.svg")
 
     palette = json.loads(swap((BASE / "encom.json").read_text(), mapping))
     palette["portrait"] = PORTRAIT[name]
+    palette["brand"] = brand
     palette["lockScene"] = LOCK_SCENE.get(name, "duel")
     if name in CLASSIC:
         palette["classic"] = True
@@ -214,7 +224,7 @@ def build(name):
     accent = mapping["#6fc3df"]
     assert accent.lower() == accent.lower()
     wallpapers(out, accent, mapping["#a8ecff"], mapping["#010305"])
-    logo_art(out, accent, mapping["#a8ecff"], mapping["#010305"])
+    logo_art(out, accent, mapping["#a8ecff"], mapping["#010305"], mark)
     print(name, "accent", accent, "contrast", mapping["#ff8c21"])
 
 
@@ -224,14 +234,19 @@ LOCK_SCENE = {"encom-tron-82": "digitise"}
 # classic cycle model and its light trails — rather than our Legacy-era
 # ones. They came with 3dLightCycles, which this screensaver started from.
 CLASSIC = {"encom-tron-82"}
-PORTRAIT = {"encom-clu": "sentinel", "encom-ares": "glitch", "encom-tron-82": "polyhedron"}
+PORTRAIT = {"encom-clu": "sentinel", "dillinger-systems": "glitch",
+            "encom-tron-82": "polyhedron"}
+
+# Whose house this is: the wordmark a theme carries, and the name that
+# goes with it on the bar, the HUD and the lock screen.
+BRAND = {"dillinger-systems": ("DILLINGER SYSTEMS", "dillinger-mark.svg")}
 
 # The two sides in Light Cycles and the disc duel. By default they are the
 # theme's accent against its contrast colour; 1982 instead takes the colours
 # the original light cycle game was played in.
 SIDES = {
     "encom-clu": {"sideAName": "CLU", "sideBName": "PROGRAMS"},
-    "encom-ares": {"sideAName": "SENTINELS", "sideBName": "PROGRAMS"},
+    "dillinger-systems": {"sideAName": "DILLINGER", "sideBName": "ENCOM"},
     "encom-tron-82": {"sideA": "#3b7bff", "sideAHi": "#d7e6ff",
                       "sideB": "#ffbe00", "sideBHi": "#fff3cf",
                       "sideAName": "USERS", "sideBName": "PROGRAMS"},

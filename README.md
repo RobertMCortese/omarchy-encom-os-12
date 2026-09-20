@@ -1,6 +1,6 @@
 # ENCOM OS-12 for Omarchy
 
-A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in four colours — OS-12 cyan, Clu orange, Ares red and 1982 violet.
+A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 look, from the boot splash to the screensaver, built as a working desktop rather than just a wallpaper. It comes in four themes — OS-12 cyan, Clu orange, Dillinger Systems red and 1982 violet.
 
 ![Desktop](docs/desktop.png)
 
@@ -78,10 +78,10 @@ The same desktop comes in four colours. Everything above follows the one you pic
 |---|---|---|
 | **ENCOM OS-12** | Tron cyan, Clu orange for alarms | PROGRAMS vs CLU |
 | **ENCOM Clu** | Clu's orange, cyan for alarms | CLU vs PROGRAMS |
-| **ENCOM Ares** | Ares red over black, cold blue accents | SENTINELS vs PROGRAMS |
+| **Dillinger Systems** | Dillinger red over black, ice-blue alarms, and its own wordmark in place of ENCOM's | DILLINGER vs ENCOM |
 | **ENCOM 1982** | The first film: violet and amber | USERS vs PROGRAMS |
 
-Switch with Omarchy's own theme menu, where they're listed as *Encom Os 12*, *Encom Clu*, *Encom Ares* and *Encom Tron 82*, or with `omarchy theme set "Encom Ares"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
+Switch with Omarchy's own theme menu, where they're listed as *Encom Os 12*, *Encom Clu*, *Dillinger Systems* and *Encom Tron 82*, or with `omarchy theme set "Dillinger Systems"`. Nothing needs rebuilding: every piece reads the current theme's `encom.json` and repaints itself. The Boardroom is recoloured in the browser as it loads: every cyan in it turns the theme's accent and every amber the theme's second colour, each keeping its own lightness so the layout stays readable. Where a theme's accent is a colour the projection already used, the two swap places rather than collapse into one.
 
 **1982 goes further.** The light cycles go back to the original game's blue against yellow, and to the pieces that came with the game this screensaver started from: its arena wall panels, its classic cycle model and its light trails, in place of our Legacy-era ones. (One palette key, `classic`, turns all three on.)
 
@@ -104,7 +104,7 @@ tools/make-theme.py                 # rebuild all variants from theme/encom-os-1
 tools/make-portrait.py encom-ares   # redraw one theme's alert portrait
 ```
 
-`make-theme.py` holds a small table of target colours per theme and restyles the base theme's files into new ones, generating the wallpapers, the logo, the boot art, the preview and the palette. Each palette carries `lockScene` (`duel` or `digitise`), `portrait` (which portrait is drawn: `sentinel`, `glitch` or `polyhedron`) and the two sides' names and colours. `make-portrait.py` draws the portrait as SVG frames and assembles the GIF; drop in a GIF of your own at `theme/<name>/portrait.gif` if you'd rather.
+`make-theme.py` holds a small table of target colours per theme and restyles the base theme's files into new ones, generating the wallpapers, the logo, the boot art, the preview and the palette. A theme can bring its own wordmark instead of ENCOM's — Dillinger Systems does — and every theme keeps it at `logo/mark.svg`, which the bar, the HUD and the terminal readout all read from the current theme, so the mark follows a theme switch. Each palette carries `lockScene` (`duel` or `digitise`), `portrait` (which portrait is drawn: `sentinel`, `glitch` or `polyhedron`) and the two sides' names and colours. `make-portrait.py` draws the portrait as SVG frames and assembles the GIF; drop in a GIF of your own at `theme/<name>/portrait.gif` if you'd rather.
 
 ## Install
 
@@ -173,7 +173,7 @@ This stands on other people's work. Thank you:
 - **[DB-IP](https://db-ip.com)**: IP to City Lite database, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The installer downloads it.
 - **[GNOME Adwaita](https://gitlab.gnome.org/GNOME/adwaita-icon-theme)**: the cursor shapes Encom-Cyan is recoloured from.
 - **[Wikimedia EventStreams](https://stream.wikimedia.org)**: the live Wikipedia feed.
-- **[Tron wiki](https://tron.fandom.com/wiki/ENCOM)**: the reference image the ENCOM logo was traced from.
+- **[Tron wiki](https://tron.fandom.com/wiki/ENCOM)**: the reference images the ENCOM and [Dillinger Systems](https://tron.fandom.com/wiki/Dillinger_Systems) logos were traced from.
 
 *Tron*, *Tron: Legacy* and **ENCOM** are trademarks of Disney. This is an unofficial fan project, not affiliated with or endorsed by Disney. See [CREDITS.md](CREDITS.md) for licences.
 

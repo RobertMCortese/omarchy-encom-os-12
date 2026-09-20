@@ -438,11 +438,11 @@ Item {
           Row {
             spacing: 8
             bottomPadding: 14
-            // The ENCOM International mark from Tron: Legacy, traced to SVG in
-            // the theme (logo/encom-mark.svg). Rendered at 2x for crisp edges.
+            // The current theme's wordmark, traced to SVG and kept at
+            // logo/mark.svg in every theme. Rendered at 2x for crisp edges.
             Image {
               anchors.verticalCenter: parent.verticalCenter
-              source: "file://" + Quickshell.env("HOME") + "/.config/omarchy/themes/encom-os-12/logo/encom-mark.svg"
+              source: "file://" + Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/logo/mark.svg"
               height: 18
               width: 77
               fillMode: Image.PreserveAspectFit
@@ -451,7 +451,8 @@ Item {
             }
             Text {
               anchors.verticalCenter: parent.verticalCenter
-              text: "OS-12"
+              // "OS-12" for ENCOM; a branded theme says who it belongs to.
+              text: (root.encom.brand || "ENCOM OS-12").replace(/^ENCOM /, "")
               color: root.cyan
               opacity: 0.7
               font.family: root.mono

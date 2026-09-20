@@ -101,7 +101,7 @@ Item {
     anchors.horizontalCenter: parent.horizontalCenter
     y: parent.height / 2 + 58
     z: 50
-    text: "ENCOM OS-12  ·  SESSION LOCKED"
+    text: (field.encomPalette.brand || "ENCOM OS-12") + "  ·  SESSION LOCKED"
     color: field.accent
     opacity: 0.7
     font.family: "JetBrainsMono Nerd Font"

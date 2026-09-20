@@ -7,12 +7,13 @@
   "contrastHi": "#ffffff",
   "alert": "#ff8781",
   "ink": "#050202",
-  "sideAName": "SENTINELS",
-  "sideBName": "PROGRAMS",
+  "sideAName": "DILLINGER",
+  "sideBName": "ENCOM",
   "sideA": "#ff3b30",
   "sideAHi": "#ffb1ac",
   "sideB": "#7fd0ff",
   "sideBHi": "#ffffff",
   "portrait": "glitch",
-  "lockScene": "duel"
+  "lockScene": "duel",
+  "brand": "DILLINGER SYSTEMS"
 }

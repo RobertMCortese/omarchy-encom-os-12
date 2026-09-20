@@ -38,7 +38,7 @@ PYEOF
 }
 
 # ── Switch away from the theme before removing it ─────────────────────────
-if [[ $(omarchy theme current 2>/dev/null) == *"Encom"* ]]; then
+if [[ $(omarchy theme current 2>/dev/null) == *"Encom"* || $(omarchy theme current 2>/dev/null) == *"Dillinger"* ]]; then
   say "Switching theme to Tokyo Night"
   run omarchy theme set tokyo-night >/dev/null
 fi
@@ -131,7 +131,7 @@ remove "$HOME/.local/share/icons/Encom-Cyan"
 remove "$HOME/.local/share/encom-boardroom"
 remove "$HOME/.local/share/encom-lightcycles"
 remove "$HOME/.cache/encom-boardroom"
-for t in "$OMA"/themes/encom-*/; do
+for t in "$OMA"/themes/encom-*/ "$OMA"/themes/dillinger-*/; do
   [[ -d $t ]] && remove "${t%/}"
 done
 

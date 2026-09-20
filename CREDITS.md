@@ -101,12 +101,18 @@ The live Wikipedia view reads Wikimedia's public
 [EventStreams](https://wikitech.wikimedia.org/wiki/Event_Platform/EventStreams) recentchange feed,
 only while that view is on screen. Edit content is © its contributors under CC BY-SA.
 
-## ENCOM, Tron and Disney
+## ENCOM, Dillinger Systems, Tron and Disney
 
-*Tron*, *Tron: Legacy* and **ENCOM** are trademarks of Disney. The ENCOM International logo in
-`theme/encom-os-12/logo/` was traced (see `tools/make-logo.sh`) from the reference image on the
-[Tron wiki](https://tron.fandom.com/wiki/ENCOM). This is an unofficial fan project, not affiliated
-with or endorsed by Disney; the logo is not covered by this repository's MIT licence.
+*Tron*, *Tron: Legacy*, *Tron: Ares*, **ENCOM** and **Dillinger Systems** are trademarks of Disney.
+Two wordmarks here were traced from reference images on the Tron wiki:
+
+| Logo | Reference | Traced by |
+|---|---|---|
+| ENCOM International, in `theme/encom-os-12/logo/` | [Tron wiki: ENCOM](https://tron.fandom.com/wiki/ENCOM) | `tools/make-logo.sh` |
+| Dillinger Systems, in `theme/dillinger-systems/logo/` | [Tron wiki: Dillinger Systems](https://tron.fandom.com/wiki/Dillinger_Systems) | `tools/make-dillinger-logo.sh` |
+
+This is an unofficial fan project, not affiliated with or endorsed by Disney; neither logo is
+covered by this repository's MIT licence.
 
 The comms portrait on the Boardroom's alert box (`boardroom/assets/alert-portrait.gif`) is a short
 clip of Marv, Sam Flynn's Boston terrier, from *Tron: Legacy* (© Disney), reduced to 64 colours. It

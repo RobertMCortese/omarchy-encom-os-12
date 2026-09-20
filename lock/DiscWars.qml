@@ -363,7 +363,7 @@ Item {
     anchors.horizontalCenter: parent.horizontalCenter
     y: parent.height / 2 + 58
     z: 2000
-    text: "ENCOM OS-12  ·  SESSION LOCKED"
+    text: (arena.encomPalette.brand || "ENCOM OS-12") + "  ·  SESSION LOCKED"
     color: arena.program
     opacity: 0.75
     font.family: "JetBrainsMono Nerd Font"

@@ -43,12 +43,13 @@ Item {
     anchors.centerIn: parent
     spacing: 6
 
-    // The ENCOM International mark on a horizontal bar; the disc sigil stays
-    // for vertical bars, which are too narrow for the wide logo.
+    // The current theme's wordmark on a horizontal bar; the disc sigil stays
+    // for vertical bars, which are too narrow for the wide logo. Every theme
+    // keeps its mark at logo/mark.svg, so this follows a theme switch.
     Image {
       visible: !root.vertical
       anchors.verticalCenter: parent.verticalCenter
-      source: "file://" + Quickshell.env("HOME") + "/.config/omarchy/themes/encom-os-12/logo/encom-mark.svg"
+      source: "file://" + Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/logo/mark.svg"
       height: 12
       width: 52
       fillMode: Image.PreserveAspectFit
@@ -113,7 +114,7 @@ Item {
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     onEntered: {
       root.hovered = true
-      if (root.bar) root.bar.showTooltip(root, "ENCOM OS-12  ·  Omarchy")
+      if (root.bar) root.bar.showTooltip(root, (root.encom.brand || "ENCOM OS-12") + "  ·  Omarchy")
     }
     onExited: {
       root.hovered = false

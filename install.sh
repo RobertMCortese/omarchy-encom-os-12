@@ -94,7 +94,7 @@ fi
 say "Installing ENCOM OS-12$( (( DRY )) && echo ' (dry run)')"
 
 # ── Theme ──────────────────────────────────────────────────────────────────
-say "Themes: ENCOM OS-12, and the Clu, Ares and 1982 variants"
+say "Themes: ENCOM OS-12, and the Clu, Dillinger Systems and 1982 variants"
 for t in "$REPO"/theme/*/; do
   put_own "$t" "$OMA/themes/$(basename "$t")"
 done
@@ -156,8 +156,19 @@ fi
 say "Terminal: fastfetch readout and ASCII logo"
 if (( ! DRY )); then
   LOGO=$OMA/themes/encom-os-12/logo
-  python3 "$LOGO/ascii.py" "$LOGO/encom-mark.svg" 50 "I N T E R N A T I O N A L   ·   O S - 1 2" > "$TMP/encom.txt"
-  python3 "$LOGO/ascii.py" "$LOGO/encom-mark.svg" 72 "I N T E R N A T I O N A L" > "$TMP/screensaver.txt"
+  # One readout per theme, drawn from that theme's own wordmark, so the
+  # terminal follows whichever theme is up.
+  for t in "$OMA"/themes/encom-*/ "$OMA"/themes/dillinger-*/; do
+    [[ -f $t/logo/mark.svg ]] || continue
+    case "$(basename "$t")" in
+      dillinger-*) strap="S Y S T E M S" ;;
+      *)           strap="I N T E R N A T I O N A L   ·   O S - 1 2" ;;
+    esac
+    python3 "$LOGO/ascii.py" "$t/logo/mark.svg" 50 "$strap" > "$TMP/ascii.txt"
+    put_own "$TMP/ascii.txt" "$t/logo/ascii.txt"
+  done
+  python3 "$LOGO/ascii.py" "$LOGO/mark.svg" 50 "I N T E R N A T I O N A L   ·   O S - 1 2" > "$TMP/encom.txt"
+  python3 "$LOGO/ascii.py" "$LOGO/mark.svg" 72 "I N T E R N A T I O N A L" > "$TMP/screensaver.txt"
   put "$TMP/encom.txt" "$OMA/branding/encom.txt"
   put "$TMP/screensaver.txt" "$OMA/branding/screensaver.txt"
 fi
