@@ -8,7 +8,7 @@ import QtQuick
 //
 //   1  THE KALEIDOSCOPE  Flat, as it is in the film: a field of short lines
 //      reflected across a grid of mirrors, drifting so the tiling folds into
-//      a new pattern, with a snowflake rosette where the mirrors meet.
+//      a new pattern. It works through a sequence of colours as it goes.
 //   2  THE TUNNEL  Real 3D from here on. Rings of a polygon strung along the
 //      axis, each turned a little further than the last, with the camera
 //      flying down the middle of them.
@@ -59,7 +59,7 @@ Item {
   Repeater {
     id: dim
     model: field.dimCount
-    Rectangle { color: field.accent; transformOrigin: Item.Left; antialiasing: true }
+    Rectangle { color: field.tint; transformOrigin: Item.Left; antialiasing: true }
   }
   Repeater {
     id: hot
@@ -210,6 +210,35 @@ Item {
   }
 
   // ── 1. The kaleidoscope (flat) ────────────────────────────────────────
+  // It works through a sequence of colours rather than holding the theme's,
+  // the way the film's does — that one passes from a pale blue-green through
+  // steel and indigo to violet. The blue here is measured off it.
+  readonly property var tints: [
+    [0.21, 0.84, 0.82],   // teal
+    [0.97, 0.20, 0.24],   // red
+    [0.85, 0.77, 1.00],   // pale violet
+    [0.60, 0.30, 1.00],   // purple
+    [0.23, 0.44, 0.96]    // blue
+  ]
+  // The pool's colour is one property standing for nine hundred items, so it
+  // moves a few times a second rather than every frame.
+  property color tint: accent
+  property int tintTick: -1
+
+  function cycleTint(t, u) {
+    var tick = Math.floor(t * 6)
+    if (tick === tintTick) return
+    tintTick = tick
+    var n = tints.length
+    var f = u * n
+    var i = Math.floor(f) % n
+    var a = tints[i], b = tints[(i + 1) % n]
+    var k = ease(f - Math.floor(f))
+    tint = Qt.rgba(a[0] + (b[0] - a[0]) * k,
+                   a[1] + (b[1] - a[1]) * k,
+                   a[2] + (b[2] - a[2]) * k, 1)
+  }
+
   readonly property int motif: 76
   property var ku0: []
   property var kv0: []
@@ -260,33 +289,6 @@ Item {
           }
         }
       }
-    }
-  }
-
-  function rosette(t, w) {
-    var R = reach
-    var sides = 24, spin = t * 0.22
-    var breathe = 1 + 0.05 * Math.sin(t * 0.9)
-    var radii = [0.055, 0.085, 0.13]
-    for (var ring = 0; ring < 3; ring++) {
-      var r = R * radii[ring] * breathe
-      for (var s = 0; s < sides; s++) {
-        var a0 = spin * (ring % 2 ? -1 : 1) + s * 2 * Math.PI / sides
-        var a1 = a0 + 2 * Math.PI / sides
-        glow(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r,
-             cx + Math.cos(a1) * r, cy + Math.sin(a1) * r, ring === 2 ? 1.8 : 1.3, w)
-      }
-    }
-    for (var k = 0; k < 16; k++) {
-      var sa = spin + k * Math.PI / 8
-      var ca = Math.cos(sa), sn = Math.sin(sa)
-      glow(cx + ca * R * 0.055 * breathe, cy + sn * R * 0.055 * breathe,
-           cx + ca * R * 0.2 * breathe, cy + sn * R * 0.2 * breathe, 1.6, w)
-      var tipR = R * (0.165 + 0.015 * Math.sin(t * 1.3 + k)) * breathe
-      var tx2 = cx + ca * tipR, ty2 = cy + sn * tipR
-      var wing = R * 0.028
-      glow(tx2, ty2, tx2 + Math.cos(sa + 2.5) * wing, ty2 + Math.sin(sa + 2.5) * wing, 1.5, w * 0.9)
-      glow(tx2, ty2, tx2 + Math.cos(sa - 2.5) * wing, ty2 + Math.sin(sa - 2.5) * wing, 1.5, w * 0.9)
     }
   }
 
@@ -561,7 +563,14 @@ Item {
     var wLan = weigh(u, 0.73, 0.97, 0.022)
     var open = ease(Math.min(1, t / 2))     // fade up on load
 
-    if (wKal > 0.01) { kaleidoscope(t, wKal * open); rosette(t, wKal * open) }
+    if (wKal > 0.01) {
+      // How far through the movement we are, for the colour cycle.
+      cycleTint(t, Math.min(1, Math.max(0, (u - 0.01) / 0.14)))
+      kaleidoscope(t, wKal * open)
+    } else if (tintTick !== -2) {
+      tint = accent          // the rest of the ride keeps the theme's colour
+      tintTick = -2
+    }
     if (wTun > 0.01) tunnel(t, wTun * open)
     if (wPla > 0.01) planet(t, wPla * open)
     if (wLan > 0.01) landing(t, wLan * open)
