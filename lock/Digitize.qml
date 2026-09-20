@@ -70,13 +70,33 @@ Item {
   Repeater {
     id: hot
     model: field.hotCount
-    Rectangle { color: field.accentHi; transformOrigin: Item.Left; antialiasing: true }
+    Rectangle { color: field.tintHot; transformOrigin: Item.Left; antialiasing: true }
   }
   Repeater {
     id: warm
     model: field.warmCount
-    Rectangle { color: field.contrast; transformOrigin: Item.Left; antialiasing: true }
+    Rectangle { color: field.tintWarm; transformOrigin: Item.Left; antialiasing: true }
   }
+  Repeater {
+    id: beacon
+    model: 18
+    Rectangle { color: "#7dffb8"; transformOrigin: Item.Left; antialiasing: true }
+  }
+
+  // The band of sky over the horizon, once we are down among it.
+  Rectangle {
+    id: sky
+    width: parent.width
+    height: Math.max(34, parent.height * 0.075)
+    opacity: 0
+    z: -60
+    gradient: Gradient {
+      GradientStop { position: 0.0; color: "#00160020" }
+      GradientStop { position: 0.72; color: "#7d1b93" }
+      GradientStop { position: 1.0; color: "#c93ac8" }
+    }
+  }
+
   Text {
     anchors.horizontalCenter: parent.horizontalCenter
     y: parent.height / 2 + 58
@@ -125,6 +145,19 @@ Item {
       put(hot.itemAt(hi++), x0, y0, x1, y1, thick, alpha)
   }
 
+  property int bi: 0
+
+  // The green beam: a core with a softer sheath either side of it.
+  function beamGreen(x, z, y0, y1, alpha) {
+    if (alpha <= 0.006) return
+    for (var g = 0; g < 3; g++) {
+      var d0 = proj(x, y0, z, 0), d1 = proj(x, y1, z, 1)
+      if (d0 < 0.2 || d1 < 0.2 || bi >= 18) return
+      put(beacon.itemAt(bi++), sc.x0, sc.y0, sc.x1, sc.y1,
+          3 + g * 7, alpha * (g === 0 ? 1 : 0.2))
+    }
+  }
+
   function beam(x0, y0, x1, y1, thick, alpha) {
     if (alpha > 0.005 && wi < warmCount && !off(x0, y0, x1, y1))
       put(warm.itemAt(wi++), x0, y0, x1, y1, thick, alpha)
@@ -161,11 +194,21 @@ Item {
     var fx = tx - px, fy = ty - py, fz = tz - pz
     var L = Math.sqrt(fx * fx + fy * fy + fz * fz) || 1
     fx /= L; fy /= L; fz /= L
-    // right = forward × world up
-    var rx = fy * 0 - fz * 1, ry = fz * 0 - fx * 0, rz = fx * 1 - fy * 0
+    // right = forward × world up. Straight up or down that cross product
+    // vanishes, so blend towards one taken against +z as it gets small and
+    // the camera keeps a steady basis through the overhead shots.
+    var rx = -fz, ry = 0, rz = fx
     var rl = Math.sqrt(rx * rx + ry * ry + rz * rz)
-    if (rl < 1e-6) { rx = 1; ry = 0; rz = 0; rl = 1 }
-    rx /= rl; ry /= rl; rz /= rl
+    if (rl > 1e-6) { rx /= rl; ry /= rl; rz /= rl }
+    var qx = fy, qy = -fx, qz = 0
+    var ql = Math.sqrt(qx * qx + qy * qy + qz * qz)
+    if (ql > 1e-6) { qx /= ql; qy /= ql; qz /= ql } else { qx = 1; qy = 0; qz = 0 }
+    var mix = Math.max(0, Math.min(1, (rl - 0.06) / 0.22))
+    rx = rx * mix + qx * (1 - mix)
+    ry = ry * mix + qy * (1 - mix)
+    rz = rz * mix + qz * (1 - mix)
+    var ml = Math.sqrt(rx * rx + ry * ry + rz * rz) || 1
+    rx /= ml; ry /= ml; rz /= ml
     // up = right × forward
     c.px = px; c.py = py; c.pz = pz
     c.fx = fx; c.fy = fy; c.fz = fz
@@ -237,12 +280,27 @@ Item {
   // The pool's colour is one property standing for nine hundred items, so it
   // moves a few times a second rather than every frame.
   property color tint: accent
+  property color tintHot: accentHi
+  property color tintWarm: contrast
   property int tintTick: -1
+  property int palState: -1
+
+  // Each movement's colours. The ride opens and runs in the theme's, and the
+  // arrival carries the sequence's own — blue ground, red beams, a green
+  // beacon — because that is what the scene is.
+  function palette(n) {
+    if (palState === n) return
+    palState = n
+    if (n === 1) { tint = accent; tintHot = accentHi; tintWarm = contrast }
+    else if (n === 2) { tint = "#2f6df0"; tintHot = "#d9d4ad"; tintWarm = "#ff3030" }
+    else if (n === 3) { tint = "#6dffae"; tintHot = "#c9ffdf"; tintWarm = "#ff3030" }
+  }
 
   function cycleTint(t, u) {
     var tick = Math.floor(t * 6)
     if (tick === tintTick) return
     tintTick = tick
+    palState = 0
     var n = tints.length
     var f = u * n
     var i = Math.floor(f) % n
@@ -265,7 +323,7 @@ Item {
   property var kal: []
 
   function kaleidoscope(t, w) {
-    var cw = width / 2.6, ch = height / 1.85
+    var cw = width / 1.9, ch = height / 1.45
     var arm = 0.022
     for (var m = 0; m < motif; m++) {
       var s = m * 1.7
@@ -569,129 +627,175 @@ Item {
     }
   }
 
-  // ── 4. The planet ─────────────────────────────────────────────────────
-  // A wireframe sphere: rings of latitude, meridians of longitude, and slabs
-  // standing on the surface. Only the near face is drawn.
-  readonly property int lat: 13
-  readonly property int lon: 28
+  // ── 4. The arrival ────────────────────────────────────────────────────
+  // Over the planet and down onto it, in one run: high above a triangulated
+  // surface with grid plates floating over it and red beams standing off the
+  // dark cities; then down through the plates, over ground that rises and
+  // falls, towards the one green beam; then over the city of extruded blocks
+  // and canyons around the C that throws it; and out through a green
+  // kaleidoscope, which hands back to the one the ride opens with.
+  //
+  // This act carries the colours the sequence itself has — blue ground, red
+  // beams, a green beacon, a magenta horizon — rather than the theme's.
+  readonly property real arriveFor: 24        // seconds the act runs
+  readonly property real flySpeed: 9
+  readonly property real curveR: 155          // how fast the surface falls away
+  readonly property real cloudAlt: 9.5
+  readonly property real beaconZ: 165
 
-  function planet(t, w) {
-    var u = (t % cycle) / cycle
-    // Falling towards the limb, turning as it comes.
-    var swing = t * 0.11
-    // Close in on the limb, so the sphere runs off the bottom of the frame
-    // and its edge cuts across it, the way the film holds the shot.
-    var dist = 2.15 - 0.35 * Math.sin(t * 0.07)
-    var camx = Math.cos(swing) * dist, camz = Math.sin(swing) * dist
-    var camy = 0.95 + 0.25 * Math.sin(t * 0.09)
-    look(camx, camy, camz, 0, -0.42, 0, 58, 0)
-    var c = cam
-    for (var i = 1; i < lat; i++) {
-      var th = i * Math.PI / lat
-      var sy = Math.cos(th), sr = Math.sin(th)
-      var th2 = (i + 1) * Math.PI / lat
-      var sy2 = Math.cos(th2), sr2 = Math.sin(th2)
-      for (var j = 0; j < lon; j++) {
-        var ph = j * 2 * Math.PI / lon, ph2 = (j + 1) * 2 * Math.PI / lon
-        var ax = sr * Math.cos(ph), ay = sy, az = sr * Math.sin(ph)
-        // Cull the far side: a point is visible when it faces the camera.
-        if ((ax - c.px) * ax + (ay - c.py) * ay + (az - c.pz) * az > 0) continue
-        var bx = sr * Math.cos(ph2), by = sy, bz = sr * Math.sin(ph2)
-        edge(ax, ay, az, bx, by, bz, 1.2, w * 0.85, 0)          // latitude
-        if (i < lat - 1) {
-          var mx = sr2 * Math.cos(ph), my = sy2, mz = sr2 * Math.sin(ph)
-          edge(ax, ay, az, mx, my, mz, 1.2, w * 0.7, 0)         // meridian
+  function terrain(x, z) {
+    return 1.5 * Math.sin(x * 0.085) * Math.cos(z * 0.062)
+         + 1.1 * Math.sin((x + z) * 0.041 + 1.3)
+         + 0.7 * Math.sin(x * 0.17 + z * 0.05)
+  }
+
+  // Height of the surface, with the curve of the world falling away from
+  // wherever the camera is.
+  property real curveNow: 155
+
+  function surfaceY(x, z, cx0, cz0, amp) {
+    var dx = x - cx0, dz = z - cz0
+    return -(dx * dx + dz * dz) / (2 * curveNow) + terrain(x, z) * amp
+  }
+
+  readonly property int gCols: 14
+  readonly property int gRows: 11
+  property var gx0: []
+  property var gy0: []
+  property var gy1: []
+
+  function arrival(t, w, age) {
+    var fly = age * flySpeed
+    // Altitude: high over the clouds, dipping through them, then low.
+    // High over the clouds, down through them, low across the plain, then
+    // up again on the approach so the structure fits in the frame when the
+    // camera comes over the top of it.
+    var alt = age < 6.5 ? 20 - age * 0.75
+            : age < 9.5 ? 15.1 - (age - 6.5) * 2.8
+            : age < 14 ? 6.7 - (age - 9.5) * 0.2
+            : age < 18.5 ? 5.8 + (age - 14) * 2.2
+            : 15.7 + (age - 18.5) * 0.6
+    var side = Math.sin(age * 0.23) * 3.4
+    // From orbit the world is a ball; down among it, it is a plain with a
+    // horizon, so the curve slackens as we come down.
+    curveNow = 155 + 950 * ease((age - 5.5) / 6)
+    // Once the beacon is in sight the camera keeps its eye on it, so it tips
+    // down and back as it passes over the top of it.
+    var track = ease((age - 13) / 3.5)
+    var amp0 = ease((age - 5.5) / 3.5)
+    // The camera rides the ground rather than a fixed height, or the ridges
+    // come up through it once we are down low.
+    var camY = terrain(side, fly) * amp0 + alt
+    var sy0 = surfaceY(0, beaconZ, side, fly, amp0)
+    var tx = side * 0.3 * (1 - track)
+    var ty = (camY - 3.5) * (1 - track) + sy0 * track
+    var tz = (fly + 30) * (1 - track) + beaconZ * track
+    look(side, camY, fly, tx, ty, tz, 62, Math.sin(age * 0.2) * 0.07)
+    var amp = amp0                             // flat from orbit, ridged low down
+    var fade = w
+
+    // The surface: rows across and columns away, with a diagonal in every
+    // cell, so the ground is triangles like the film's.
+    var r, c
+    // Once the camera turns to watch the beacon go by it is looking behind
+    // itself, so the ground has to start back there too.
+    var back = 75 * ease((age - 13.5) / 3.5)
+    for (c = 0; c <= gCols; c++) gx0[c] = side + (c - gCols / 2) * 9.5
+    for (r = 0; r <= gRows; r++) {
+      var z = fly + 4 - back + r * 5 + r * r * 1.35
+      var zn = fly + 4 - back + (r + 1) * 5 + (r + 1) * (r + 1) * 1.35
+      var far = fade * Math.max(0, 1 - r / (gRows + 1.5))
+      if (far <= 0.006) continue
+      for (c = 0; c <= gCols; c++) {
+        gy1[c] = surfaceY(gx0[c], z, side, fly, amp)
+        if (c > 0) edge(gx0[c - 1], gy1[c - 1], z, gx0[c], gy1[c], z, 1.2, far, 0)
+      }
+      if (r < gRows) {
+        for (c = 0; c <= gCols; c++) {
+          var yn = surfaceY(gx0[c], zn, side, fly, amp)
+          edge(gx0[c], gy1[c], z, gx0[c], yn, zn, 1.1, far * 0.8, 0)
+          if (c > 0) edge(gx0[c - 1], gy1[c - 1], z, gx0[c], yn, zn, 1, far * 0.55, 0)
         }
       }
     }
-    // Slabs standing on the surface, and beams cutting past them.
-    for (var b = 0; b < 14; b++) {
-      var la = 0.45 + 0.75 * Math.sin(b * 2.1), lo = b * 0.62 + t * 0.05
-      var sr3 = Math.sin(la), cy3 = Math.cos(la)
-      var ox = sr3 * Math.cos(lo), oy = cy3, oz = sr3 * Math.sin(lo)
-      if ((ox - c.px) * ox + (oy - c.py) * oy + (oz - c.pz) * oz > 0) continue
-      var up = 1.09
-      // A flat plate just off the surface, drawn as a quad.
-      var e1x = -Math.sin(lo), e1z = Math.cos(lo)
-      var e2x = cy3 * Math.cos(lo), e2y = -sr3, e2z = cy3 * Math.sin(lo)
-      var sz = 0.2 + 0.1 * Math.abs(wob(b * 3, t))
-      var px1 = ox * up, py1 = oy * up, pz1 = oz * up
-      var ax1 = px1 + (e1x * sz), ay1 = py1, az1 = pz1 + (e1z * sz)
-      var ax2 = px1 - (e1x * sz), ay2 = py1, az2 = pz1 - (e1z * sz)
-      var bx1 = ax1 + e2x * sz, by1 = ay1 + e2y * sz, bz1 = az1 + e2z * sz
-      var bx2 = ax2 + e2x * sz, by2 = ay2 + e2y * sz, bz2 = az2 + e2z * sz
-      edge(ax1, ay1, az1, ax2, ay2, az2, 1.4, w, 1)
-      edge(bx1, by1, bz1, bx2, by2, bz2, 1.4, w, 1)
-      edge(ax1, ay1, az1, bx1, by1, bz1, 1.4, w, 1)
-      edge(ax2, ay2, az2, bx2, by2, bz2, 1.4, w, 1)
-      // The leg down to the surface.
-      edge(px1, py1, pz1, ox, oy, oz, 1.2, w * 0.6, 0)
-    }
-    // Beams: struck from points on the surface and thrown out past the
-    // camera, the one warm thing in the shot.
-    for (var g = 0; g < 7; g++) {
-      var bl = 0.4 + 0.7 * Math.sin(g * 1.7 + t * 0.05)
-      var bo = g * 0.95 + t * 0.19
-      var brs = Math.sin(bl)
-      var sx3 = brs * Math.cos(bo), sy3 = Math.cos(bl), sz3 = brs * Math.sin(bo)
-      if ((sx3 - c.px) * sx3 + (sy3 - c.py) * sy3 + (sz3 - c.pz) * sz3 > 0) continue
-      // Aim each beam somewhere near the camera and run it well past, so it
-      // cuts right across the shot.
-      var tox = c.px - sx3, toy = c.py - sy3, toz = c.pz - sz3
-      var tl = Math.sqrt(tox * tox + toy * toy + toz * toz) || 1
-      var lean = 0.55 * wob(g * 5, t * 0.4)
-      var ex = sx3 + (tox / tl + lean) * 7, ey = sy3 + (toy / tl + lean * 0.4) * 7,
-          ez = sz3 + (toz / tl - lean) * 7
-      edge(sx3, sy3, sz3, ex, ey, ez, 2.2,
-           w * (0.45 + 0.5 * Math.abs(Math.sin(t * 0.7 + g))), 2)
-    }
-  }
 
-  // ── 5. The landing ────────────────────────────────────────────────────
-  // The grid: a lit plane running away to the horizon, slabs on it, the
-  // camera coming in low.
-  readonly property real gridStep: 3.0
-
-  function landing(t, w) {
-    var fly = t * 7
-    var drop = 1 + 5 * Math.max(0, 1 - ((t % cycle) / cycle - 0.72) * 9)
-    look(Math.sin(t * 0.2) * 1.5, 1.6 + drop * 0.6, fly,
-         0, 0.8 + drop * 0.3, fly + 14, 60, 0)
-    var first = Math.ceil(fly / gridStep)
-    var span = 13
-    // Lines across, marching towards the camera.
-    for (var k = -1; k < 22; k++) {
-      var z = (first + k) * gridStep
-      var fade = w * Math.max(0, 1 - (z - fly) / (22 * gridStep))
-      edge(-span * gridStep, 0, z, span * gridStep, 0, z, 1.3, fade, 0)
-    }
-    // Lines running away, converging on the horizon.
-    for (var j = -span; j <= span; j++) {
-      var x = j * gridStep
-      edge(x, 0, fly - gridStep, x, 0, fly + 22 * gridStep, 1.2,
-           w * (1 - Math.abs(j) / (span + 3)) * 0.9, 0)
-    }
-    // The horizon, where the plane runs out.
-    edge(-span * gridStep * 3, 0, fly + 22 * gridStep, span * gridStep * 3, 0,
-         fly + 22 * gridStep, 2.4, w, 1)
-    // Slabs standing on the plane.
-    for (var b = 0; b < 9; b++) {
-      var bz = first * gridStep + ((b * 7.3 + t * 0.6) % (20 * gridStep))
-      var bx = ((b % 5) - 2) * gridStep * 2.6 + wob(b, t) * 2
-      var bw = 1.6 + 0.8 * Math.abs(wob(b + 9, t * 0.3))
-      var bh = 1.2 + 2.6 * Math.abs(wob(b + 4, t * 0.2))
-      var fade2 = w * Math.max(0, 1 - (bz - fly) / (20 * gridStep))
-      if (fade2 <= 0.005) continue
-      // Four uprights and the top square: a slab, wireframe.
-      for (var s2 = 0; s2 < 4; s2++) {
-        var sx2 = (s2 === 0 || s2 === 3) ? -bw : bw
-        var sz2 = (s2 < 2) ? -bw : bw
-        edge(bx + sx2, 0, bz + sz2, bx + sx2, bh, bz + sz2, 1.3, fade2, 0)
+    // Grid plates floating over the surface: the clouds.
+    for (var p2 = 0; p2 < 16; p2++) {
+      var pz = fly + 20 + ((p2 * 37.3 + age * 6) % 150)
+      var px = side + (hash(p2, 1) - 0.5) * 90
+      var py = surfaceY(px, pz, side, fly, amp) + cloudAlt + hash(1, p2) * 3
+      var pw = 7 + hash(p2, 5) * 12, pd = 5 + hash(5, p2) * 9
+      var pf = fade * Math.max(0, 1 - (pz - fly) / 150) * ease((pz - fly - 4) / 8)
+      if (pf <= 0.006) continue
+      var ruleN = 3
+      for (var q2 = 0; q2 <= ruleN; q2++) {
+        var fq = q2 / ruleN
+        edge(px - pw, py, pz - pd + fq * 2 * pd, px + pw, py, pz - pd + fq * 2 * pd,
+             q2 === 0 || q2 === ruleN ? 1.5 : 1, pf * (q2 % ruleN ? 0.5 : 1), 1)
+        edge(px - pw + fq * 2 * pw, py, pz - pd, px - pw + fq * 2 * pw, py, pz + pd,
+             q2 === 0 || q2 === ruleN ? 1.5 : 1, pf * (q2 % ruleN ? 0.5 : 1), 1)
       }
-      edge(bx - bw, bh, bz - bw, bx + bw, bh, bz - bw, 1.3, fade2, 1)
-      edge(bx + bw, bh, bz - bw, bx + bw, bh, bz + bw, 1.3, fade2, 1)
-      edge(bx + bw, bh, bz + bw, bx - bw, bh, bz + bw, 1.3, fade2, 1)
-      edge(bx - bw, bh, bz + bw, bx - bw, bh, bz - bw, 1.3, fade2, 1)
+    }
+
+    // Red beams standing off the dark cities we pass.
+    for (var b = 0; b < 9; b++) {
+      var bz = fly + 15 + ((b * 61.7 + age * 9) % 190)
+      var bx = side + (hash(b, 9) - 0.5) * 110
+      var by = surfaceY(bx, bz, side, fly, amp)
+      var bf = fade * Math.max(0, 1 - (bz - fly) / 190)
+      edge(bx, by, bz, bx, by + 34, bz, 2.2, bf, 2)
+    }
+
+    // The green beam, and the C it comes out of.
+    var sy = surfaceY(0, beaconZ, side, fly, amp)
+    var bcf = fade * Math.max(0, 1 - Math.abs(beaconZ - fly) / 210)
+    beamGreen(0, beaconZ, sy, sy + 95, bcf)
+    if (beaconZ - fly < 120) {
+      var near = fade * ease((120 - (beaconZ - fly)) / 40)
+      // The C: a ring with a gap in it, walls standing off the ground.
+      var segs = 24
+      for (var s2 = 0; s2 < segs; s2++) {
+        var a0 = s2 / segs * 2 * Math.PI, a1 = (s2 + 1) / segs * 2 * Math.PI
+        if (a0 > 5.05 && a0 < 6.05) continue
+        var r0 = 7.5, r1 = 10, hgt2 = 3.4
+        var x00 = Math.cos(a0) * r0, z00 = beaconZ + Math.sin(a0) * r0
+        var x01 = Math.cos(a1) * r0, z01 = beaconZ + Math.sin(a1) * r0
+        var x10 = Math.cos(a0) * r1, z10 = beaconZ + Math.sin(a0) * r1
+        var x11 = Math.cos(a1) * r1, z11 = beaconZ + Math.sin(a1) * r1
+        edge(x00, sy + hgt2, z00, x01, sy + hgt2, z01, 1.5, near, 1)
+        edge(x10, sy + hgt2, z10, x11, sy + hgt2, z11, 1.5, near, 1)
+        edge(x00, sy + hgt2, z00, x10, sy + hgt2, z10, 1.2, near * 0.7, 1)
+        edge(x00, sy, z00, x00, sy + hgt2, z00, 1.2, near * 0.6, 1)
+      }
+      // The city around it: extruded blocks with canyons between them.
+      for (var k2 = 0; k2 < 63; k2++) {
+        var gxi = (k2 % 9) - 4, gzi = Math.floor(k2 / 9) - 3
+        if (hash(gxi, gzi) < 0.22) continue          // a street, not a block
+        var kx = gxi * 8.5 + (hash(gxi, gzi + 5) - 0.5) * 2
+        var kz = beaconZ + gzi * 8.5 + (hash(gzi, gxi + 5) - 0.5) * 2
+        var fromC = Math.sqrt(kx * kx + (kz - beaconZ) * (kz - beaconZ))
+        if (fromC < 12) continue                      // the clearing round the C
+        var kw = 1.8 + hash(k2, 6) * 2.2, kd = 1.8 + hash(6, k2) * 2.2
+        var kh = 1.4 + hash(k2, k2) * 6.5
+        var ky = surfaceY(kx, kz, side, fly, amp)
+        var kf = near * (0.5 + 0.5 * hash(k2, 8))
+        edge(kx - kw, ky + kh, kz - kd, kx + kw, ky + kh, kz - kd, 1.2, kf, 0)
+        edge(kx + kw, ky + kh, kz - kd, kx + kw, ky + kh, kz + kd, 1.2, kf, 0)
+        edge(kx + kw, ky + kh, kz + kd, kx - kw, ky + kh, kz + kd, 1.2, kf, 0)
+        edge(kx - kw, ky + kh, kz + kd, kx - kw, ky + kh, kz - kd, 1.2, kf, 0)
+        edge(kx - kw, ky, kz - kd, kx - kw, ky + kh, kz - kd, 1.1, kf * 0.8, 0)
+        edge(kx + kw, ky, kz + kd, kx + kw, ky + kh, kz + kd, 1.1, kf * 0.8, 0)
+      }
+    }
+
+    // The horizon: where the surface runs out, with the sky's band over it.
+    var hd = Math.sqrt(2 * curveNow * Math.max(1, alt))
+    var d0 = proj(side, surfaceY(side, fly + hd, side, fly, 0), fly + hd, 0)
+    if (d0 > 0.5) {
+      sky.y = sc.y0 - sky.height
+      sky.opacity = 0.34 * fade
+    } else {
+      sky.opacity = 0
     }
   }
 
@@ -702,31 +806,40 @@ Item {
     di = 0
     hi = 0
     wi = 0
+    bi = 0
 
     var u = (t / cycle) % 1
     var wKal = weigh(u, 0.01, 0.12, 0.028)
     var wTun = weigh(u, 0.15, 0.32, 0.028)
     var wFld = weigh(u, 0.35, 0.55, 0.022)
-    var wPla = weigh(u, 0.58, 0.76, 0.022)
-    var wLan = weigh(u, 0.79, 0.98, 0.02)
+    var wArr = weigh(u, 0.57, 0.995, 0.018)
     var open = ease(Math.min(1, t / 2))     // fade up on load
 
     if (wKal > 0.01) {
       // How far through the movement we are, for the colour cycle.
       cycleTint(t, Math.min(1, Math.max(0, (u - 0.01) / 0.11)))
       kaleidoscope(t, wKal * open)
-    } else if (tintTick !== -2) {
-      tint = accent          // the rest of the ride keeps the theme's colour
-      tintTick = -2
+    } else if (wArr <= 0.01) {
+      palette(1)             // the middle of the ride keeps the theme's
     }
     if (wTun > 0.01) tunnel(t, wTun * open)
     if (wFld > 0.01) fieldRide(t, wFld * open, (u - 0.35) * cycle)
-    if (wPla > 0.01) planet(t, wPla * open)
-    if (wLan > 0.01) landing(t, wLan * open)
+    if (wArr > 0.01) {
+      var age = (u - 0.57) * cycle
+      // Out through a green kaleidoscope, which hands back to the opening.
+      var out = ease((age - 18.6) / 1.9)
+      palette(out > 0.12 ? 3 : 2)
+      if (out < 1) arrival(t, wArr * open * (1 - out) * (1 - out), age)
+      else sky.opacity = 0
+      if (out > 0) kaleidoscope(t, Math.min(1, out * 1.6) * wArr * open)
+    } else {
+      sky.opacity = 0
+    }
 
     for (var z = di; z < diWas; z++) dim.itemAt(z).opacity = 0
     for (var y2 = hi; y2 < hiWas; y2++) hot.itemAt(y2).opacity = 0
     for (var y3 = wi; y3 < wiWas; y3++) warm.itemAt(y3).opacity = 0
+    for (var y4 = bi; y4 < 18; y4++) beacon.itemAt(y4).opacity = 0
     diWas = di
     hiWas = hi
     wiWas = wi
