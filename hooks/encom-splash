@@ -31,5 +31,14 @@ if cmp -s "$dir/unlock.png" /usr/share/plymouth/themes/omarchy/logo.png; then
   exit 0
 fi
 
+# sudo needs somewhere to ask. Run from a hook, a pipe or an editor's shell
+# there is no terminal, and its prompt fails with a puzzling message, so say
+# what to do instead.
+if [[ ! -t 0 && -z ${SUDO_ASKPASS:-} ]] && ! sudo -n true 2>/dev/null; then
+  echo "This needs sudo, and there is no terminal here to ask for the password." >&2
+  echo "Run it in a terminal window:  encom-splash${1:+ $1}" >&2
+  exit 1
+fi
+
 echo "Setting the boot splash to $theme. This needs sudo and rebuilds the initramfs."
 omarchy plymouth set-by-theme "$theme"
