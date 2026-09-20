@@ -178,13 +178,21 @@ def wallpapers(out, accent, accent_hi, ink):
         svg_file.unlink()
 
 
-def logo_art(out, accent, accent_hi, ink, mark):
-    """The theme's wordmark in its own colour: boot splash and preview art."""
-    tmp = out / "_mark.png"
-    run(["rsvg-convert", "-w", "760", "-o", str(tmp), str(mark)])
-    run(["magick", str(tmp), "-background", "none", "-fill", accent_hi, "-colorize", "100",
+def logo_art(out, accent, accent_hi, ink, poster, mark):
+    """Two pieces of art in the theme's colour.
+
+    The boot splash and the disk unlock prompt carry the mark the desktop
+    wears — ENCOM for the ENCOM houses, Dillinger for Dillinger — because
+    that is whose machine it is. The poster card names the theme instead, and
+    is only ever seen in the readme and the theme picker."""
+    plate = out / "_mark.png"
+    run(["rsvg-convert", "-w", "760", "-o", str(plate), str(mark)])
+    run(["magick", str(plate), "-background", "none", "-fill", accent_hi, "-colorize", "100",
          "-bordercolor", "none", "-border", "20x20", "-resize", "800x188",
          "-background", ink, "-gravity", "center", "-extent", "800x188", str(out / "unlock.png")])
+    plate.unlink()
+    tmp = out / "_poster.png"
+    run(["rsvg-convert", "-w", "760", "-o", str(tmp), str(poster)])
     # The preview card: a fresh grid in the theme's colours with the wordmark
     # over it, so every card is the same bed whatever wallpapers the theme has.
     bed = out / "_bed.svg"
@@ -239,7 +247,8 @@ def build(name):
     accent = mapping["#6fc3df"]
     assert accent.lower() == accent.lower()
     wallpapers(out, accent, mapping["#a8ecff"], mapping["#010305"])
-    logo_art(out, accent, mapping["#a8ecff"], mapping["#010305"], poster_of(name))
+    logo_art(out, accent, mapping["#a8ecff"], mapping["#010305"],
+             poster_of(name), out / "logo" / "mark.svg")
     print(name, "accent", accent, "contrast", mapping["#ff8c21"])
 
 
@@ -311,7 +320,7 @@ def repost(name):
         (out / "encom.json").write_text(json.dumps(palette, indent=2) + "\n")
     palette = json.loads((out / "encom.json").read_text())
     logo_art(out, palette["accent"], palette["accentHi"],
-             palette.get("ink", "#010305"), poster_of(name))
+             palette.get("ink", "#010305"), poster_of(name), out / "logo" / "mark.svg")
     print(name, "poster from", poster_of(name).name)
 
 
