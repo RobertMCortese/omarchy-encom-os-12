@@ -85,6 +85,9 @@ def frame_svg(style, i, colour, glow, ink):
 def build(theme):
     palette = json.loads((THEMES / theme / "encom.json").read_text())
     style = palette.get("portrait", "sentinel")
+    if style == "own":
+        print(theme, "ships its own portrait.gif — left alone")
+        return
     colour, glow, ink = palette["accent"], palette["accentHi"], palette.get("ink", "#02060a")
     out = THEMES / theme / "portrait.gif"
     with tempfile.TemporaryDirectory() as tmp:

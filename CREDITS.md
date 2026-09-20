@@ -114,6 +114,13 @@ Two wordmarks here were traced from reference images on the Tron wiki:
 This is an unofficial fan project, not affiliated with or endorsed by Disney; neither logo is
 covered by this repository's MIT licence.
 
-The comms portrait on the Boardroom's alert box (`boardroom/assets/alert-portrait.gif`) is a short
-clip of Marv, Sam Flynn's Boston terrier, from *Tron: Legacy* (© Disney), reduced to 64 colours. It
-is included as fan use and, like the logo, is not covered by this repository's MIT licence.
+Two comms portraits on the Boardroom's alert box are short clips from the films (© Disney),
+reduced in size and colour depth. Both are included as fan use and, like the logos, are not
+covered by this repository's MIT licence:
+
+| File | Clip |
+|---|---|
+| `boardroom/assets/alert-portrait.gif` | Marv, Sam Flynn's Boston terrier, from *Tron: Legacy* |
+| `theme/dillinger-systems/portrait.gif` | The Master Control Program from *Tron* (1982) |
+
+The other themes' portraits are drawn from code by `tools/make-portrait.py` and are ours.

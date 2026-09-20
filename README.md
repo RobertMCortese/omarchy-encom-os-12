@@ -104,7 +104,7 @@ tools/make-theme.py                 # rebuild all variants from theme/encom-os-1
 tools/make-portrait.py encom-ares   # redraw one theme's alert portrait
 ```
 
-`make-theme.py` holds a small table of target colours per theme and restyles the base theme's files into new ones, generating the wallpapers, the logo, the boot art, the preview and the palette. A theme can bring its own wordmark instead of ENCOM's — Dillinger Systems does — and every theme keeps it at `logo/mark.svg`, which the bar, the HUD and the terminal readout all read from the current theme, so the mark follows a theme switch. Each palette carries `lockScene` (`duel` or `digitise`), `portrait` (which portrait is drawn: `sentinel`, `glitch` or `polyhedron`) and the two sides' names and colours. `make-portrait.py` draws the portrait as SVG frames and assembles the GIF; drop in a GIF of your own at `theme/<name>/portrait.gif` if you'd rather.
+`make-theme.py` holds a small table of target colours per theme and restyles the base theme's files into new ones, generating the wallpapers, the logo, the boot art, the preview and the palette. A theme can bring its own wordmark instead of ENCOM's — Dillinger Systems does — and every theme keeps it at `logo/mark.svg`, which the bar, the HUD and the terminal readout all read from the current theme, so the mark follows a theme switch. Each palette carries `lockScene` (`duel` or `digitise`), `portrait` (which portrait is drawn: `sentinel`, `glitch` or `polyhedron`) and the two sides' names and colours. `make-portrait.py` draws the portrait as SVG frames and assembles the GIF; a theme whose `portrait` is `own` keeps the `theme/<name>/portrait.gif` it ships instead, which is how Dillinger Systems gets the Master Control Program.
 
 ## Install
 

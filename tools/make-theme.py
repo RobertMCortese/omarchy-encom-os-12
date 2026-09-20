@@ -234,7 +234,10 @@ LOCK_SCENE = {"encom-tron-82": "digitise"}
 # classic cycle model and its light trails — rather than our Legacy-era
 # ones. They came with 3dLightCycles, which this screensaver started from.
 CLASSIC = {"encom-tron-82"}
-PORTRAIT = {"encom-clu": "sentinel", "dillinger-systems": "glitch",
+# Which portrait appears beside a Boardroom alert. A style name is drawn by
+# tools/make-portrait.py; "own" means the theme ships a portrait.gif of its
+# own and the generator leaves it alone.
+PORTRAIT = {"encom-clu": "sentinel", "dillinger-systems": "own",
             "encom-tron-82": "polyhedron"}
 
 # Whose house this is: the wordmark a theme carries, and the name that
