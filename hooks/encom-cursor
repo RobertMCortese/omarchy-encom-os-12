@@ -32,7 +32,9 @@ for f in "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-4.0/settings.in
 done
 
 # Hyprland takes it live; everything started after this picks it up from the
-# environment, and XCURSOR_THEME keeps new clients in step.
+# environment, and XCURSOR_THEME keeps new clients in step. Across a reboot
+# it is hypr/encom.lua that carries this, which reads the name out of the
+# current theme's palette rather than being told it here.
 size=$(gsettings get org.gnome.desktop.interface cursor-size 2>/dev/null | tr -dc '0-9')
 hyprctl setcursor "$name" "${size:-24}" >/dev/null 2>&1 || true
 hyprctl keyword env XCURSOR_THEME,"$name" >/dev/null 2>&1 || true

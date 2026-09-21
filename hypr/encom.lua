@@ -41,8 +41,20 @@ hl.animation({ leaf = "layersIn", enabled = true, speed = 2.4, bezier = "encomRe
 hl.animation({ leaf = "layersOut", enabled = true, speed = 1.2, bezier = "encomDerezz", style = "popin 80%" })
 
 -- ── ENCOM OS-12: cursor ──────────────────────────────────────────────────
--- Encom-Cyan lives in ~/.local/share/icons. It is Adwaita's geometry with the
--- greyscale ramp remapped to cyan and a soft halo underneath. Only
--- XCURSOR_THEME is set: naming a HYPRCURSOR_THEME that does not exist as a
--- hyprcursor package would make Hyprland fall back noisily.
-hl.env("XCURSOR_THEME", "Encom-Cyan")
+-- Each theme has a cursor of its own in ~/.local/share/icons, and names it in
+-- its palette. This reads the name from whichever theme is current rather
+-- than carrying one, because Hyprland sets this at startup and a fixed name
+-- would hand every boot the same pointer whatever the desktop wears.
+--
+-- Only XCURSOR_THEME is set: naming a HYPRCURSOR_THEME that does not exist as
+-- a hyprcursor package would make Hyprland fall back noisily.
+local function theme_cursor()
+  local path = os.getenv("HOME") .. "/.local/state/omarchy/current/theme/encom.json"
+  local f = io.open(path, "r")
+  if not f then return "Tron-Legacy-Cursor" end
+  local text = f:read("*a")
+  f:close()
+  return text:match('"cursor"%s*:%s*"([^"]+)"') or "Tron-Legacy-Cursor"
+end
+
+hl.env("XCURSOR_THEME", theme_cursor())
