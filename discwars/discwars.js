@@ -610,6 +610,15 @@
     } else if (f.mode === "cling") {
       f.yOff = hangOffset(p) + 0.03 * Math.sin(wall * 2.4);
       if (f.willClimb && f.mt > 0.8) setMode(p, "climb");
+      else if (f.mt > 14) {
+        // Nobody came to finish it off. Hanging there for the rest of the
+        // round is neither much to watch nor survivable: with a ring still
+        // under it, it hauls itself up; without one, its grip goes. A round
+        // ends when a side is cleared, so this is also what stops two last
+        // fighters hanging opposite each other with nobody able to act.
+        if (ringUp(p, f.clingRing)) { f.willClimb = true; setMode(p, "climb"); }
+        else { setMode(p, "fall"); eliminated(p, 0.9); }   // owns no exchange to pass on
+      }
     } else if (f.mode === "climb") {
       // Up and over the edge, onto the ring it was holding.
       var c = Math.min(1, f.mt / 0.6), top = groundAt(p, ringMid(f.clingRing), Math.atan2(f.clingAt[1] - f.cz, f.clingAt[0] - f.cx));
@@ -768,7 +777,9 @@
   }
 
   // Wind up and release; `launch` gets the release point.
+  var lastThrow = 0;
   function throwFrom(p, launch) {
+    lastThrow = wall;
     play(p, "throw", throwSpeed);
     after(0.12, function () { ds[p].state = "hand"; });
     after(releaseTime(), function () {
@@ -831,7 +842,9 @@
             (f.mode === "stand" && k === f.ring && !drop(q))) {
           // Nothing left to hold on to.
           setMode(q, "fall");
-          afterWall(2.4, function () { newRound(q); });
+          // Taking a fighter out does not end the exchange unless it was the
+          // last of its side; the thrower carries it on against whoever is left.
+          if (!eliminated(q, 2.4)) after(rand(0.7, 1.1), function () { rally(p); });
           return;
         }
         // Let a fighter who has just dropped hang there a moment.
@@ -865,7 +878,7 @@
             shatter(q);
             spark(hitAt, "#ffffff");
             setMode(q, "derez");
-            afterWall(3.0, function () { newRound(q); });
+            if (!eliminated(q, 3.0)) after(rand(0.9, 1.3), function () { rally(p); });
             return;
           }
           if (canAct(q)) knockBack(q);
@@ -1002,17 +1015,42 @@
     bodyShot(p, q);
   }
 
-  // After a fall: the rings rise again, the fighter rezzes back in at the
-  // centre.
-  function newRound(fallen) {
-    restoreRings(fallen);
-    var f = fs[fallen];
-    f.ring = 0; f.ang = 0; f.pos = [f.cx, f.cz]; f.move = null; f.clingRing = -1;
-    setMode(fallen, "rez");
-    f.yOff = 0; f.alpha = 0;
-    play(fallen, "idle");
-    ds[fallen] = { state: "back", pos: [0, 0, 0], trail: [], flight: null };
-    afterWall(1.2, function () { rally(fallen); });
+  // ── Rounds ────────────────────────────────────────────────────────────
+  // A fighter that goes over the edge is out. Nobody comes back until one
+  // side has been cleared off the board entirely; then the whole arena is
+  // set up again and the next round begins.
+  function liveCount(team) {
+    var n = 0;
+    for (var i = 0; i < fs.length; i++) if (fs[i].team === team && alive(i)) n++;
+    return n;
+  }
+
+  // Called the moment a fighter is out, with how long the fall or the derez
+  // still has to play before the arena should be reset. True once that was
+  // the last of its side: the round is over and the caller's exchange dies
+  // with it, rather than being handed on.
+  function eliminated(p, settle) {
+    if (liveCount(fs[p].team) > 0) return false;   // its side fights on without it
+    afterWall(settle + 1.4, newRound);             // let the last one finish falling
+    return true;
+  }
+
+  // Everyone back on their platform, every ring up, and the next round on.
+  function newRound() {
+    for (var i = 0; i < fs.length; i++) {
+      restoreRings(i);
+      var f = fs[i];
+      f.ring = 0; f.ang = 0; f.pos = [f.cx, f.cz];
+      f.move = null; f.clingRing = -1; f.willClimb = false; f.foe = -1;
+      f.blockTarget = 0; f.block = 0;
+      setMode(i, "rez");
+      f.yOff = 0; f.alpha = 0;
+      play(i, "idle");
+      ds[i] = { state: "back", pos: [0, 0, 0], trail: [], flight: null };
+    }
+    // Anything still queued belongs to the round that just ended.
+    queue = []; wallQueue = []; chains = 0;
+    for (var j = 0; j < teamSize; j++) afterWall(1.2 + j * 0.35, startChain);
   }
 
   // ── Frame ─────────────────────────────────────────────────────────────
@@ -1041,7 +1079,15 @@
     // Keep as many exchanges going as the match should have.
     if (wall - lastChainCheck > 1.2) {
       lastChainCheck = wall;
-      while (chains < teamSize && startChain()) { /* fill every slot */ }
+      // As the round wears on there are fewer fighters to carry exchanges,
+      // so ask for no more than the thinner side can still put up.
+      var want = Math.min(teamSize, liveCount(0), liveCount(1));
+      // `chains` is a count of exchanges believed to be running, and a bug
+      // that loses one without saying so leaves the arena quiet for good. If
+      // nothing has been thrown for a while and both sides still have
+      // fighters, stop believing the count and start again.
+      if (want > 0 && wall - lastThrow > 7) chains = 0;
+      while (chains < want && startChain()) { /* fill every slot */ }
     }
     aimCamera(realDt);
 
