@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Disc Wars</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  /* The arena commits to its own world: a dark screen in the current
+     theme's ink, whatever the host is wearing. Every colour here comes
+     from the palette the scene is drawn in, so the chrome and the duel
+     change together. */
+  :root {
+    --ink: #010306;
+    --accent: #6fc3df;
+    --accent-hi: #a8ecff;
+    --side-a: #6fc3df;
+    --side-b: #ff8c21;
+    --chrome: rgba(168, 236, 255, 0.72);
+    --chrome-dim: rgba(168, 236, 255, 0.34);
+    --rule: rgba(168, 236, 255, 0.16);
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--chrome);
+    font-family: var(--mono);
+    overflow: hidden;
+  }
+  .stage { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* Chrome rests over the scene and steps back while you watch. */
+  .chrome {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: opacity 700ms ease;
+  }
+  .chrome.resting { opacity: 0.22; }
+  .chrome > * { pointer-events: auto; }
+
+  .ident { display: flex; align-items: center; gap: 10px; }
+  .ident svg { width: 26px; height: 26px; flex: none; }
+  .ident .marks { display: flex; flex-direction: column; gap: 2px; }
+  .ident .brand {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.34em;
+    text-transform: uppercase; color: var(--chrome);
+  }
+  .ident .sub {
+    font-size: 9.5px; letter-spacing: 0.26em; text-transform: uppercase;
+    color: var(--chrome-dim);
+  }
+
+  .foot { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .palettes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .palette {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: transparent; cursor: pointer;
+    border: 1px solid var(--rule); border-radius: 2px;
+    padding: 6px 10px;
+    font: inherit; font-size: 9.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--chrome-dim);
+    transition: border-color 200ms ease, color 200ms ease;
+  }
+  .palette:hover, .palette:focus-visible { color: var(--chrome); border-color: var(--chrome-dim); }
+  .palette[aria-pressed="true"] { color: var(--chrome); border-color: var(--accent); }
+  .palette:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Each chip carries the two colours its fighters wear. */
+  .swatch { display: inline-flex; gap: 3px; }
+  .swatch i { width: 7px; height: 7px; border-radius: 50%; display: block; }
+
+  .hint {
+    font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--chrome-dim);
+  }
+  .credit {
+    font-size: 9px; letter-spacing: 0.04em; color: var(--chrome-dim);
+    text-align: center; max-width: 86ch; line-height: 1.7; margin: 0;
+  }
+  .credit a { color: inherit; }
+
+  /* Offered instead of autoplay when the viewer asks for less motion. */
+  .curtain {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center;
+    background: var(--ink);
+  }
+  .curtain.on { display: flex; }
+  .start {
+    background: transparent; cursor: pointer; font: inherit;
+    border: 1px solid var(--accent); border-radius: 2px;
+    color: var(--chrome); padding: 14px 26px;
+    font-size: 11px; letter-spacing: 0.34em; text-transform: uppercase;
+  }
+  .start:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chrome, .palette { transition: none; }
+  }
+
+  @media (max-width: 560px) {
+    .ident .brand { font-size: 10px; letter-spacing: 0.24em; }
+    .palette { padding: 5px 8px; font-size: 9px; letter-spacing: 0.12em; }
+    .credit { font-size: 8.5px; }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <canvas id="arena" aria-label="Two figures duelling with identity discs on floating rings"></canvas>
+
+  <div class="chrome" id="chrome">
+    <div class="ident">
+      <!-- The identity disc: a ring broken at the top, as it sits in its dock. -->
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="13" fill="none" stroke="var(--accent)" stroke-width="2"
+                stroke-dasharray="58 24" transform="rotate(-115 16 16)"/>
+        <circle cx="16" cy="16" r="5.5" fill="none" stroke="var(--accent-hi)" stroke-width="1.6"/>
+        <circle cx="16" cy="16" r="1.6" fill="var(--accent-hi)"/>
+      </svg>
+      <div class="marks">
+        <div class="brand" id="brand">ENCOM OS-12</div>
+        <div class="sub">Disc Wars</div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="palettes" id="palettes" role="group" aria-label="Colour scheme"></div>
+      <p class="hint">Click the arena to hold it</p>
+      <p class="credit">
+        Motion captured from the
+        <a href="http://mocap.cs.cmu.edu/">CMU Graphics Lab Motion Capture Database</a>.
+        An original scene from the ENCOM OS-12 desktop theme — a fan work, not affiliated
+        with or endorsed by Disney.
+      </p>
+    </div>
+  </div>
+
+  <div class="curtain" id="curtain">
+    <button class="start" id="start" type="button">Begin the duel</button>
+  </div>
+</div>
+
+<script src="poses.js"></script>
+<script src="discwars.js"></script>
+<script>
+(function () {
+  "use strict";
+  var canvas = document.getElementById("arena");
+  var chrome = document.getElementById("chrome");
+  var brand = document.getElementById("brand");
+  var curtain = document.getElementById("curtain");
+  var root = document.documentElement;
+
+  // Chip per theme, each showing the two colours its fighters wear.
+  var BRANDS = {
+    "tron-legacy": "ENCOM OS-12", "clu": "ENCOM OS-12", "tron-1982": "ENCOM OS-12",
+    "tron-uprising": "ENCOM OS-12", "tron-2-0": "ENCOM OS-12",
+    "dillinger-systems": "Dillinger Systems"
+  };
+  var box = document.getElementById("palettes");
+  var chips = {};
+  Object.keys(DiscWars.themes).forEach(function (key) {
+    var t = DiscWars.themes[key];
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "palette";
+    b.id = "palette-" + key;
+    b.setAttribute("aria-pressed", key === "tron-legacy" ? "true" : "false");
+    b.innerHTML = '<span class="swatch"><i style="background:' + t.sideA +
+                  '"></i><i style="background:' + t.sideB + '"></i></span>' + t.name;
+    b.addEventListener("click", function () { choose(key); });
+    box.appendChild(b);
+    chips[key] = b;
+  });
+
+  function choose(key) {
+    var t = DiscWars.themes[key];
+    DiscWars.setTheme(key);
+    root.style.setProperty("--ink", t.ink);
+    root.style.setProperty("--accent", t.accent);
+    root.style.setProperty("--accent-hi", t.accentHi);
+    root.style.setProperty("--chrome", tint(t.accentHi, 0.72));
+    root.style.setProperty("--chrome-dim", tint(t.accentHi, 0.34));
+    root.style.setProperty("--rule", tint(t.accentHi, 0.16));
+    brand.textContent = BRANDS[key] || "ENCOM OS-12";
+    Object.keys(chips).forEach(function (k) {
+      chips[k].setAttribute("aria-pressed", String(k === key));
+    });
+  }
+
+  function tint(hex, a) {
+    var n = parseInt(hex.slice(1), 16);
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+  }
+
+  // The chrome steps back while you watch and comes up on any input.
+  var restTimer = 0;
+  function stir() {
+    chrome.classList.remove("resting");
+    clearTimeout(restTimer);
+    restTimer = setTimeout(function () { chrome.classList.add("resting"); }, 2600);
+  }
+  ["pointermove", "pointerdown", "keydown"].forEach(function (e) {
+    window.addEventListener(e, stir, { passive: true });
+  });
+  stir();
+
+  // Click the arena to hold it; the chrome and the chips stay live.
+  var held = false;
+  canvas.addEventListener("click", function () {
+    held = !held;
+    DiscWars.setPaused(held);
+  });
+
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)");
+  if (still.matches) {
+    // Asked for less motion: show the first frame and wait to be invited.
+    curtain.classList.add("on");
+    document.getElementById("start").addEventListener("click", function () {
+      curtain.classList.remove("on");
+      DiscWars.init(canvas);
+      choose("tron-legacy");
+    });
+  } else {
+    DiscWars.init(canvas);
+    choose("tron-legacy");
+  }
+})();
+</script>
+</body>
+</html>
