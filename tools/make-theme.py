@@ -203,15 +203,18 @@ def wallpapers(out, accent, accent_hi, ink):
         svg_file.unlink()
 
 
-def logo_art(out, accent, accent_hi, ink, poster, mark, splash=None):
+def logo_art(out, accent, accent_hi, ink, poster, mark, splash=None, splash_mark=None):
     """Two pieces of art in the theme's colour.
 
     The boot splash and the disk unlock prompt carry the mark the desktop
     wears — ENCOM for the ENCOM houses, Dillinger for Dillinger — because
-    that is whose machine it is. The poster card names the theme instead, and
-    is only ever seen in the readme and the theme picker."""
+    that is whose machine it is. A house whose full lockup has a strapline
+    uses it here, where there is room for it; the bar and the HUD keep the
+    wordmark alone, which is all that is legible at twelve pixels high. The
+    poster card names the theme instead, and is only ever seen in the readme
+    and the theme picker."""
     plate = out / "_mark.png"
-    run(["rsvg-convert", "-w", "760", "-o", str(plate), str(mark)])
+    run(["rsvg-convert", "-w", "760", "-o", str(plate), str(splash_mark or mark)])
     run(["magick", str(plate), "-background", "none", "-fill", splash or accent_hi, "-colorize", "100",
          "-bordercolor", "none", "-border", "20x20", "-resize", "800x188",
          "-background", ink, "-gravity", "center", "-extent", "800x188", str(out / "unlock.png")])
@@ -276,7 +279,7 @@ def build(name):
     accent, bright, ink = palette["accent"], palette["accentHi"], palette["ink"]
     wallpapers(out, accent, bright, ink)
     logo_art(out, accent, bright, ink, poster_of(name), out / "logo" / "mark.svg",
-             palette.get("splash"))
+             palette.get("splash"), splash_mark_of(name))
     print(name, "accent", accent, "contrast", mapping["#ff8c21"])
 
 
@@ -356,6 +359,16 @@ def cursor_name(name):
     return "-".join(p.capitalize() for p in name.split("-")) + "-Cursor"
 
 
+# A house whose mark has a strapline shows the whole lockup on the boot
+# screen, where there is room for it.
+SPLASH_MARK = {"dillinger-systems": "dillinger-logo.svg"}
+
+
+def splash_mark_of(name):
+    own = THEMES_DIR / name / "logo" / SPLASH_MARK.get(name, "")
+    return own if SPLASH_MARK.get(name) and own.exists() else None
+
+
 def poster_of(name):
     own = THEMES_DIR / name / "logo" / POSTER.get(name, "mark.svg")
     return own if own.exists() else THEMES_DIR / name / "logo" / "mark.svg"
@@ -379,7 +392,7 @@ def repost(name):
     palette = json.loads((out / "encom.json").read_text())
     logo_art(out, palette["accent"], palette["accentHi"],
              palette.get("ink", "#010305"), poster_of(name), out / "logo" / "mark.svg",
-             palette.get("splash"))
+             palette.get("splash"), splash_mark_of(name))
     print(name, "poster from", poster_of(name).name)
 
 
