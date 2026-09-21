@@ -185,8 +185,7 @@ if (( ! DRY )); then
   curl -sfL -o "$TMP/lc/app/three.min.js" "https://cdn.jsdelivr.net/npm/three@$THREE_VER/three.min.js"
   echo "$THREE_SHA  $TMP/lc/app/three.min.js" | sha256sum -c --quiet - \
     || { echo "three.js download did not match its checksum" >&2; exit 1; }
-  cp "$REPO"/lightcycles/{index.html,encom-arena.js,encom-game.js,arenaWalls2.png,\
-                          classic-cycle.json,classic-trail.png} "$TMP/lc/app/"
+  cp "$REPO"/lightcycles/{index.html,encom-arena.js,encom-game.js,arenaWalls2.png,classic-cycle.json,classic-trail.png} "$TMP/lc/app/"
   put_own "$TMP/lc" "$LIGHTCYCLES"
 fi
 
@@ -228,10 +227,10 @@ retry 8 omarchy plugin enable encom.hud
 # ── Workspace nodes and chamfered launcher (clones of Omarchy's own) ─────
 say "Shell: workspace nodes and the chamfered launcher"
 settle
-if [[ ! -d $OMA/plugins/$USER_ID.workspaces ]]; then run omarchy plugin clone omarchy.workspaces >/dev/null; fi
+if [[ ! -d $OMA/plugins/$USER_ID.workspaces ]]; then run omarchy plugin clone omarchy.workspaces >/dev/null 2>&1; fi
 put "$REPO/shell/workspaces/Workspaces.qml" "$OMA/plugins/$USER_ID.workspaces/Workspaces.qml"
 settle
-if [[ ! -d $OMA/plugins/$USER_ID.menu ]]; then run omarchy plugin clone omarchy.menu >/dev/null; fi
+if [[ ! -d $OMA/plugins/$USER_ID.menu ]]; then run omarchy plugin clone omarchy.menu >/dev/null 2>&1; fi
 put "$REPO/shell/menu/encom-chamfer-patch.py" "$OMA/plugins/$USER_ID.menu/encom-chamfer-patch.py"
 run python3 "$OMA/plugins/$USER_ID.menu/encom-chamfer-patch.py" >/dev/null
 # Make the clone menu-only. As a bar widget too, Omarchy counts it as off
@@ -283,7 +282,7 @@ fi
 # clone from omarchy.lock after every Omarchy update.
 say "Lock screen: disc wars (Omarchy's lock, with the scene added)"
 settle
-if [[ ! -d $OMA/plugins/$USER_ID.lock ]]; then run omarchy plugin clone omarchy.lock >/dev/null; fi
+if [[ ! -d $OMA/plugins/$USER_ID.lock ]]; then run omarchy plugin clone omarchy.lock >/dev/null 2>&1; fi
 put "$REPO/lock/DiscWars.qml" "$OMA/plugins/$USER_ID.lock/DiscWars.qml"
 put "$REPO/lock/poses.js" "$OMA/plugins/$USER_ID.lock/poses.js"
 put "$REPO/lock/encom-lock-patch.py" "$OMA/plugins/$USER_ID.lock/encom-lock-patch.py"
@@ -291,7 +290,7 @@ put "$REPO/hooks/encom-lock.hook" "$OMA/hooks/post-update.d/encom-lock.hook"
 settle
 if (( ! DRY )); then
   rm -f "$OMA/plugins/$USER_ID.lock/.upstream-sha256"       # force a refresh now
-  bash "$OMA/hooks/post-update.d/encom-lock.hook"
+  bash "$OMA/hooks/post-update.d/encom-lock.hook" 2>/dev/null
 fi
 
 # ── Hyprland: square corners, rez/derezz animations, cursor ──────────────
@@ -354,6 +353,12 @@ put "$REPO/hooks/encom-splash" "$HOME/.local/bin/encom-splash"
 say "Applying the theme"
 run omarchy theme set tron-legacy >/dev/null
 run omarchy theme bg set "$HOME/.local/state/omarchy/current/theme/backgrounds/01-grid-horizon.png" >/dev/null
+# Theme switches rewrite shell.json from the theme's own template, whose
+# plugins list knows nothing of our clones -- the ENCOM launcher would end up
+# disabled (blank super+space / menu icon) just like a fresh-but-unenabled menu.
+# Re-enable it after the apply so the install always leaves the menu summonable.
+settle
+retry 8 omarchy plugin enable "$USER_ID.menu"
 run hyprctl reload >/dev/null
 if (( ! DRY )) && [[ -n $(hyprctl configerrors 2>/dev/null | tr -d '[:space:]') ]]; then
   warn "Hyprland reports config errors:"; hyprctl configerrors
