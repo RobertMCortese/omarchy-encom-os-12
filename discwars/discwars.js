@@ -296,6 +296,7 @@
       for (var k = 0; k < ringCount; k++)
         ringRadii[k].forEach(function (r) { if (r > 0) ringCircles.push([f, k, r]); });
     queue = []; wallQueue = []; pieces = []; chains = 0;
+    score = [0, 0]; banner = "";
     sparkData = [null, null, null, null];
     rebuildLines();
   }
@@ -1019,6 +1020,12 @@
   // A fighter that goes over the edge is out. Nobody comes back until one
   // side has been cleared off the board entirely; then the whole arena is
   // set up again and the next round begins.
+  // Rounds won, and what to say when one is. A match is a fresh scoreline,
+  // so changing the match size starts the count again.
+  var score = [0, 0];
+  var banner = "";
+  var SIDE_NAME = ["PROGRAMS", "SENTINELS"];
+
   function liveCount(team) {
     var n = 0;
     for (var i = 0; i < fs.length; i++) if (fs[i].team === team && alive(i)) n++;
@@ -1031,6 +1038,9 @@
   // with it, rather than being handed on.
   function eliminated(p, settle) {
     if (liveCount(fs[p].team) > 0) return false;   // its side fights on without it
+    var winner = 1 - fs[p].team;
+    score[winner]++;
+    banner = SIDE_NAME[winner] + " WIN";
     afterWall(settle + 1.4, newRound);             // let the last one finish falling
     return true;
   }
@@ -1050,6 +1060,7 @@
     }
     // Anything still queued belongs to the round that just ended.
     queue = []; wallQueue = []; chains = 0;
+    banner = "";
     for (var j = 0; j < teamSize; j++) afterWall(1.2 + j * 0.35, startChain);
   }
 
@@ -1251,6 +1262,18 @@
       for (var i = 0; i < teamSize; i++) after(0.8 + i * 0.35, startChain);
     },
     get teams() { return teamSize; },
+    // What the scoreboard needs: the scoreline, who is still standing, and
+    // the word on a round just won. Read, never held on to -- the fighters
+    // are rebuilt whenever the match size changes.
+    state: function () {
+      return {
+        teams: teamSize,
+        score: score.slice(),
+        banner: banner,
+        sides: SIDE_NAME.slice(),
+        fighters: fs.map(function (f, i) { return { team: f.team, alive: alive(i) }; })
+      };
+    },
     init: function (el, n) {
       canvas = el;
       ctx = canvas.getContext("2d");

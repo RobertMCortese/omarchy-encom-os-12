@@ -61,6 +61,7 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 
 - `"screensaver": "discwars"` turns it on; `"discwars_teams"` picks the match — `1` for the duel, `2` or `3` for two ranks of platforms facing each other across the arena.
 - In a team match each fighter still has its own platform and four rings, and as many exchanges run at once as there are fighters on a side, so a 3v3 keeps three discs in the air. Fighters mostly stay on the opponent they are fighting, gang up on one that has been knocked off and is hanging from an edge, and now and then switch targets.
+- A scoreboard across the top carries each side's name, a pip per fighter that goes dark as it is knocked out, and the rounds won; the side that clears the board is named under it. It stays up as a screensaver, where the rest of the chrome does not — who is still standing is the scene rather than furniture.
 - **A fighter that goes over the edge is out for the round.** Nobody comes back until one side has been cleared off the board entirely; then every ring rises, both teams rez in and the next round starts. So a match is a war of attrition — 3v3 down through 3v1 to a win, and now and then a clean sweep with nobody lost.
 - A broken ring rises again on its own after a while, so a match left running for hours never grinds every platform down to nothing.
 - The camera pulls back for a bigger match and drifts toward whichever exchange is in the air. The 1v1 keeps the fixed framing it was composed around.
