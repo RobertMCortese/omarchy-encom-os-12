@@ -26,7 +26,9 @@ Modes:
                             this, and it is handy for development)
 
   --site lightcycles        serve the Light Cycles screensaver instead of the
-                            Boardroom: same window handling, no collectors
+  --site discwars           Boardroom: same window handling, no collectors.
+                            Both take their colours from /palette.js, so they
+                            run in whichever theme the desktop is wearing.
 """
 import argparse
 import datetime as dt
@@ -52,6 +54,8 @@ SITES = {
     "boardroom": (APP, "/"),
     "lightcycles": (pathlib.Path.home() / ".local" / "share" / "encom-lightcycles" / "app",
                     "/index.html"),
+    "discwars": (pathlib.Path.home() / ".local" / "share" / "encom-discwars" / "app",
+                 "/index.html"),
 }
 SITE_DIR = APP
 sys.path.insert(0, str(HERE / "geo"))
@@ -66,8 +70,8 @@ CHROMIUM_PROFILE = pathlib.Path.home() / ".cache" / "encom-boardroom" / "chromiu
 TELEMETRY = pathlib.Path.home() / ".config" / "omarchy" / "bar" / "scripts" / "encom-telemetry"
 
 DEFAULT_CONFIG = {
-    # Which screensaver runs on idle: "lightcycles" or "boardroom"
-    # (read by encom-screensaver).
+    # Which screensaver runs on idle: "lightcycles", "discwars" or
+    # "boardroom" (read by encom-screensaver).
     "screensaver": "lightcycles",
     # Where this machine sits on the globe. PST8PDT carries no coordinates,
     # so this is a sensible default; change it to your city.

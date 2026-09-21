@@ -1,9 +1,10 @@
 #!/bin/bash
-# ENCOM screensaver: Light Cycles (default) or the Boardroom, fullscreen,
-# closing on any input or when the session locks.
+# ENCOM screensaver: Light Cycles (default), Disc Wars or the Boardroom,
+# fullscreen, closing on any input or when the session locks.
 #
 #   encom-screensaver            the one chosen in ~/.config/encom-boardroom/config.json
-#                                ("screensaver": "lightcycles" or "boardroom")
+#                                ("screensaver": "lightcycles", "discwars" or
+#                                "boardroom")
 #   encom-screensaver <name>     that one, now
 #
 # The ENCOM HUD service calls this when the session goes idle. Turn it off

@@ -31,6 +31,7 @@ CFG=$HOME/.config
 OMA=$CFG/omarchy
 BOARDROOM=$HOME/.local/share/encom-boardroom
 LIGHTCYCLES=$HOME/.local/share/encom-lightcycles
+DISCWARS=$HOME/.local/share/encom-discwars
 STATE=$HOME/.local/state/omarchy-encom-os-12
 BACKUP=$STATE/backup-$(date +%Y%m%d-%H%M%S)
 USER_ID=${USER:-$(id -un)}
@@ -196,6 +197,16 @@ if (( ! DRY )); then
     || { echo "three.js download did not match its checksum" >&2; exit 1; }
   cp "$REPO"/lightcycles/{index.html,encom-arena.js,encom-game.js,arenaWalls2.png,classic-cycle.json,classic-trail.png} "$TMP/lc/app/"
   put_own "$TMP/lc" "$LIGHTCYCLES"
+fi
+
+# ── Disc Wars screensaver ─────────────────────────────────────────────────
+say "Disc Wars: the lock screen's duel, on a canvas"
+if (( ! DRY )); then
+  mkdir -p "$TMP/dw/app"
+  # palette.js is a placeholder here; the server answers /palette.js itself
+  # with the current theme, so the duel runs in the desktop's colours.
+  cp "$REPO"/discwars/{index.html,discwars.js,poses.js,palette.js} "$TMP/dw/app/"
+  put_own "$TMP/dw" "$DISCWARS"
 fi
 
 # ── Branding: fastfetch logo and screensaver banner from the ENCOM mark ──

@@ -102,6 +102,9 @@
   }
   .start:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
+  /* Run as a screensaver or the desktop background: the duel, and nothing else. */
+  body.embedded .chrome { display: none; }
+
   @media (prefers-reduced-motion: reduce) {
     .chrome, .palette { transition: none; }
   }
@@ -149,6 +152,7 @@
   </div>
 </div>
 
+<script src="palette.js"></script>
 <script src="poses.js"></script>
 <script src="discwars.js"></script>
 <script>
@@ -185,16 +189,23 @@
   function choose(key) {
     var t = DiscWars.themes[key];
     DiscWars.setTheme(key);
-    root.style.setProperty("--ink", t.ink);
-    root.style.setProperty("--accent", t.accent);
-    root.style.setProperty("--accent-hi", t.accentHi);
-    root.style.setProperty("--chrome", tint(t.accentHi, 0.72));
-    root.style.setProperty("--chrome-dim", tint(t.accentHi, 0.34));
-    root.style.setProperty("--rule", tint(t.accentHi, 0.16));
+    dress(t);
     brand.textContent = BRANDS[key] || "ENCOM OS-12";
     Object.keys(chips).forEach(function (k) {
       chips[k].setAttribute("aria-pressed", String(k === key));
     });
+  }
+
+  // Put the page's own chrome in the same colours as the arena.
+  function dress(t) {
+    root.style.setProperty("--ink", t.ink || "#010306");
+    root.style.setProperty("--accent", t.accent || "#6fc3df");
+    var hi = t.accentHi || "#a8ecff";
+    root.style.setProperty("--accent-hi", hi);
+    root.style.setProperty("--chrome", tint(hi, 0.72));
+    root.style.setProperty("--chrome-dim", tint(hi, 0.34));
+    root.style.setProperty("--rule", tint(hi, 0.16));
+    if (t.brand) brand.textContent = t.brand;
   }
 
   function tint(hex, a) {
@@ -217,9 +228,17 @@
   // Click the arena to hold it; the chrome and the chips stay live.
   var held = false;
   canvas.addEventListener("click", function () {
+    if (embedded) return;                 // input ends a screensaver; it does not pause it
     held = !held;
     DiscWars.setPaused(held);
   });
+
+  // Run by the Boardroom server as a screensaver or the desktop background:
+  // no chrome, and the colours come from the desktop's own theme rather than
+  // from the chips. Opened from any other server, neither applies.
+  var embedded = /^#(screensaver|wallpaper)\b/.test(location.hash);
+  var themed = window.encomPalette && Object.keys(window.encomPalette).length > 0;
+  if (embedded) document.body.classList.add("embedded");
 
   var still = window.matchMedia("(prefers-reduced-motion: reduce)");
   if (still.matches) {
@@ -227,12 +246,23 @@
     curtain.classList.add("on");
     document.getElementById("start").addEventListener("click", function () {
       curtain.classList.remove("on");
-      DiscWars.init(canvas);
-      choose("tron-legacy");
+      begin();
     });
   } else {
+    begin();
+  }
+
+  function begin() {
     DiscWars.init(canvas);
-    choose("tron-legacy");
+    if (themed) {
+      DiscWars.setPalette(window.encomPalette);
+      dress(window.encomPalette);
+      Object.keys(chips).forEach(function (k) {
+        chips[k].setAttribute("aria-pressed", "false");
+      });
+    } else {
+      choose("tron-legacy");
+    }
   }
 })();
 </script>

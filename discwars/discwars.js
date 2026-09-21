@@ -1067,6 +1067,19 @@
   window.DiscWars = {
     themes: THEMES,
     setTheme: function (key) { if (THEMES[key]) applyPalette(THEMES[key]); },
+    // An ENCOM palette straight out of a theme's encom.json, as the desktop
+    // hands it over. Anything it leaves out falls back to TRON Legacy, so a
+    // partial palette still draws.
+    setPalette: function (p) {
+      var base = THEMES["tron-legacy"];
+      applyPalette({
+        name: p.brand || base.name,
+        sideA: p.sideA || base.sideA, sideAHi: p.sideAHi || base.sideAHi,
+        sideB: p.sideB || base.sideB, sideBHi: p.sideBHi || base.sideBHi,
+        accent: p.accent || base.accent, accentHi: p.accentHi || base.accentHi,
+        ink: p.ink || base.ink
+      });
+    },
     setPaused: setPaused,
     init: function (el) {
       canvas = el;

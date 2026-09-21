@@ -55,7 +55,9 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 - None of those glows are real light sources. They're textures, lines and sprites, which keeps the Broadwell GPU's load down.
 - Silent. It closes on any key or mouse movement, and the screen still locks on schedule behind it.
 - The riders wear the theme's colours; on the 1982 theme they go back to the original arcade game's blue against yellow.
-- Prefer the Boardroom as the screensaver? Set `"screensaver": "boardroom"` (see below). It then rotates through SYSTEM, GITHUB and WIKIPEDIA.
+- Prefer another screensaver? Set `"screensaver": "boardroom"` (see below), which rotates through SYSTEM, GITHUB and WIKIPEDIA, or `"discwars"` for the disc duel.
+
+**The Disc Wars screensaver**: the lock screen's duel, full screen. The same two fighters, the same rings and the same throws — blocked on the shield, dodged with a flip or a sweep kick, banked off the ceiling to take a ring out from under someone — but with the password field gone and nothing else on the screen. It runs on a canvas rather than in QML (`discwars/`, also published on its own at [encom-disc-wars](https://github.com/RobertMCortese/encom-disc-wars)), takes its colours from the current theme like everything else, and closes on any input. Set `"screensaver": "discwars"` to use it.
 
 **Alerts**: disk nearly full, sustained heat, low battery, memory pressure, failed services and out-of-memory kills. They show in the theme's alert colour, ENCOM teal as standard: a **!** on the bar (visible over windows), a SYSTEM ALERT panel on the HUD, and in the Boardroom a SYSTEM ALERT box with an animated comms portrait, Star Fox style.
 
