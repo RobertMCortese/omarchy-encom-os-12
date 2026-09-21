@@ -27,16 +27,34 @@ W, H, FRAMES = 200, 154, 24
 
 
 def head(colour, glow, turn, visor):
-    """A helmeted head and shoulders, turned by `turn` (-1..1)."""
+    """A helmeted head and shoulders, turned by `turn` (-1..1).
+
+    Lit from the left, the way a face on a comms screen is: the body carries
+    a wash of the theme's colour rather than being an outline, with a
+    brighter rim down the lit side and the visor glowing over it."""
     cx = W / 2 + turn * 10
     return f'''
-      <g stroke="{colour}" fill="none" stroke-width="2.5" stroke-linejoin="round">
-        <path d="M{cx - 46} {H} q0 -34 46 -34 q46 0 46 34" fill="#00000055"/>
-        <path d="M{cx - 27} {H - 58} q0 -40 27 -40 q27 0 27 40 q0 34 -27 34 q-27 0 -27 -34 z" fill="#00000088"/>
+      <defs>
+        <linearGradient id="lit" x1="0" y1="0" x2="1" y2="0.3">
+          <stop offset="0" stop-color="{colour}" stop-opacity="0.55"/>
+          <stop offset="0.45" stop-color="{colour}" stop-opacity="0.22"/>
+          <stop offset="1" stop-color="{colour}" stop-opacity="0.06"/>
+        </linearGradient>
+        <radialGradient id="visorGlow" cx="0.5" cy="0.5" r="0.6">
+          <stop offset="0" stop-color="{glow}" stop-opacity="0.95"/>
+          <stop offset="1" stop-color="{glow}" stop-opacity="0.25"/>
+        </radialGradient>
+      </defs>
+      <g stroke="{colour}" stroke-width="2.5" stroke-linejoin="round">
+        <path d="M{cx - 46} {H} q0 -34 46 -34 q46 0 46 34" fill="url(#lit)"/>
+        <path d="M{cx - 27} {H - 58} q0 -40 27 -40 q27 0 27 40 q0 34 -27 34 q-27 0 -27 -34 z"
+              fill="url(#lit)"/>
+        <path d="M{cx - 27} {H - 58} q0 -40 27 -40 q6 0 11 3 q-21 6 -21 37 q0 24 12 32
+                 q-2 0.6 -4 0.6 q-25 0 -25 -34 z" fill="{glow}" fill-opacity="0.3" stroke="none"/>
         <path d="M{cx - 22} {H - 70} q22 -12 44 0 q-4 16 -22 16 q-18 0 -22 -16 z"
-              fill="{glow}" fill-opacity="{visor:.2f}" stroke="{glow}"/>
-        <path d="M{cx - 27} {H - 34} l54 0" stroke-opacity="0.5"/>
-        <path d="M{cx} {H - 24} l0 24" stroke-opacity="0.5"/>
+              fill="url(#visorGlow)" fill-opacity="{visor:.2f}" stroke="{glow}"/>
+        <path d="M{cx - 27} {H - 34} l54 0" stroke-opacity="0.5" fill="none"/>
+        <path d="M{cx} {H - 24} l0 24" stroke-opacity="0.5" fill="none"/>
       </g>'''
 
 
@@ -86,27 +104,74 @@ def frame_svg(style, i, colour, glow, ink):
         for k in range(6):
             p, q = top[k], top[(k + 1) % 6]
             u, v = bottom[k], bottom[(k + 1) % 6]
-            edges += (f'<path d="M{p[0]:.1f} {p[1]:.1f} L{q[0]:.1f} {q[1]:.1f}"/>'
+            # Each face carries a wash that brightens as it turns to the
+            # light, so the solid reads as shaded rather than as a cage.
+            lit = 0.06 + 0.3 * max(0.0, math.cos(a0 + k * math.pi / 3 + 0.6))
+            edges += (f'<path d="M{p[0]:.1f} {p[1]:.1f} L{q[0]:.1f} {q[1]:.1f} '
+                      f'L{v[0]:.1f} {v[1]:.1f} L{u[0]:.1f} {u[1]:.1f} Z" '
+                      f'fill="{colour}" fill-opacity="{lit:.2f}" stroke="none"/>'
+                      f'<path d="M{p[0]:.1f} {p[1]:.1f} L{q[0]:.1f} {q[1]:.1f}"/>'
                       f'<path d="M{u[0]:.1f} {u[1]:.1f} L{v[0]:.1f} {v[1]:.1f}"/>'
                       f'<path d="M{p[0]:.1f} {p[1]:.1f} L{u[0]:.1f} {u[1]:.1f}" stroke-opacity="0.55"/>')
         body = (f'<g stroke="{colour}" fill="none" stroke-width="2.5">{edges}</g>'
                 f'<circle cx="{cx}" cy="{cy}" r="{5 + 2 * math.sin(t * 4 * math.pi):.1f}" fill="{glow}"/>')
 
-    scan = "".join(f'<rect x="0" y="{y}" width="{W}" height="1" fill="#000" fill-opacity="0.35"/>'
-                   for y in range(0, H, 3))
+    # Interlacing: every other line dropped, and a brighter band rolling down
+    # the picture the way a camera out of sync with a screen shows one.
+    scan = "".join(f'<rect x="0" y="{y}" width="{W}" height="1" fill="#000" fill-opacity="0.45"/>'
+                   for y in range(0, H, 2))
+    roll = (t * H * 1.6) % (H + 40) - 20
+    band = (f'<rect x="0" y="{roll:.0f}" width="{W}" height="14" fill="{colour}" '
+            f'fill-opacity="0.10"/>'
+            f'<rect x="0" y="{roll + 14:.0f}" width="{W}" height="2" fill="{glow}" '
+            f'fill-opacity="0.22"/>')
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}">
       <rect width="{W}" height="{H}" fill="{ink}"/>
-      <rect width="{W}" height="{H}" fill="{colour}" fill-opacity="0.05"/>
-      {body}{scan}
+      <rect width="{W}" height="{H}" fill="{colour}" fill-opacity="0.07"/>
+      {body}{band}{scan}
     </svg>'''
+
+
+def shoot(theme, palette):
+    """A theme that ships footage of its own: portrait-source.gif, put on the
+    same screen as the drawn ones. Its greys are mapped onto the theme's ramp
+    — ink through accent to the bright — and the same interlacing laid over
+    it, so a clip and a drawing sit side by side without one looking pasted
+    in from somewhere else."""
+    src = THEMES / theme / "portrait-source.gif"
+    out = THEMES / theme / "portrait.gif"
+    if not src.exists():
+        print(theme, "has no portrait-source.gif to work from")
+        return
+    colour, glow = palette["accent"], palette["accentHi"]
+    ink = palette.get("ink", "#02060a")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp)
+        lines = tmp / "lines.png"
+        rows = "".join(f'<rect x="0" y="{y}" width="{W}" height="1" fill="#000" '
+                       f'fill-opacity="0.45"/>' for y in range(0, H, 2))
+        (tmp / "lines.svg").write_text(
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}">{rows}</svg>')
+        subprocess.run(["rsvg-convert", "-w", str(W), "-h", str(H),
+                        "-o", str(lines), str(tmp / "lines.svg")], check=True)
+        subprocess.run([
+            "magick", str(src), "-coalesce", "-resize", f"{W}x{H}!",
+            "-colorspace", "gray",
+            # black to the theme's ink, white to its bright: the clip now
+            # carries the theme's colour instead of its own.
+            "+level-colors", f"{ink},{glow}",
+            "-fill", colour, "-colorize", "22",
+            "null:", str(lines), "-layers", "composite",
+            "-colorspace", "sRGB", "-type", "TrueColor", "-colors", "64",
+            "-layers", "Optimize", str(out)], check=True)
+    print(theme, "from portrait-source.gif", out.stat().st_size, "bytes")
 
 
 def build(theme):
     palette = json.loads((THEMES / theme / "encom.json").read_text())
     style = palette.get("portrait", "sentinel")
     if style == "own":
-        print(theme, "ships its own portrait.gif — left alone")
-        return
+        return shoot(theme, palette)
     colour, glow, ink = palette["accent"], palette["accentHi"], palette.get("ink", "#02060a")
     out = THEMES / theme / "portrait.gif"
     with tempfile.TemporaryDirectory() as tmp:
