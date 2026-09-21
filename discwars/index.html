@@ -59,9 +59,9 @@
     color: var(--chrome-dim);
   }
 
-  .foot { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  .palettes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-  .palette {
+  .foot { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .palettes, .sizes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .palette, .size {
     display: inline-flex; align-items: center; gap: 7px;
     background: transparent; cursor: pointer;
     border: 1px solid var(--rule); border-radius: 2px;
@@ -70,9 +70,12 @@
     text-transform: uppercase; color: var(--chrome-dim);
     transition: border-color 200ms ease, color 200ms ease;
   }
-  .palette:hover, .palette:focus-visible { color: var(--chrome); border-color: var(--chrome-dim); }
-  .palette[aria-pressed="true"] { color: var(--chrome); border-color: var(--accent); }
-  .palette:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .palette:hover, .palette:focus-visible,
+  .size:hover, .size:focus-visible { color: var(--chrome); border-color: var(--chrome-dim); }
+  .palette[aria-pressed="true"], .size[aria-pressed="true"] { color: var(--chrome); border-color: var(--accent); }
+  .palette:focus-visible, .size:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* The match size reads as a count, so it gets the wider tracking of a label. */
+  .size { letter-spacing: 0.24em; }
   /* Each chip carries the two colours its fighters wear. */
   .swatch { display: inline-flex; gap: 3px; }
   .swatch i { width: 7px; height: 7px; border-radius: 50%; display: block; }
@@ -111,7 +114,7 @@
 
   @media (max-width: 560px) {
     .ident .brand { font-size: 10px; letter-spacing: 0.24em; }
-    .palette { padding: 5px 8px; font-size: 9px; letter-spacing: 0.12em; }
+    .palette, .size { padding: 5px 8px; font-size: 9px; letter-spacing: 0.12em; }
     .credit { font-size: 8.5px; }
   }
 </style>
@@ -136,6 +139,7 @@
     </div>
 
     <div class="foot">
+      <div class="sizes" id="sizes" role="group" aria-label="Match size"></div>
       <div class="palettes" id="palettes" role="group" aria-label="Colour scheme"></div>
       <p class="hint">Click the arena to hold it</p>
       <p class="credit">
@@ -236,9 +240,47 @@
   // Run by the Boardroom server as a screensaver or the desktop background:
   // no chrome, and the colours come from the desktop's own theme rather than
   // from the chips. Opened from any other server, neither applies.
-  var embedded = /^#(screensaver|wallpaper)\b/.test(location.hash);
+  var hash = /^#(screensaver|wallpaper)(?::(\w+))?/.exec(location.hash);
+  var embedded = !!hash;
   var themed = window.encomPalette && Object.keys(window.encomPalette).length > 0;
   if (embedded) document.body.classList.add("embedded");
+
+  // Match size: whatever the host asked for (#screensaver:3), else ?teams=,
+  // else what this viewer chose last, else the duel.
+  function wantedTeams() {
+    if (hash && /^[123]$/.test(hash[2] || "")) return Number(hash[2]);
+    var q = /[?&]teams=([123])\b/.exec(location.search);
+    if (q) return Number(q[1]);
+    try {
+      var saved = localStorage.getItem("discwars.teams");
+      if (saved && /^[123]$/.test(saved)) return Number(saved);
+    } catch (e) { /* private window, blocked storage: the duel is a fine default */ }
+    return 1;
+  }
+  var teams = wantedTeams();
+
+  var sizeBox = document.getElementById("sizes");
+  var sizeChips = {};
+  [1, 2, 3].forEach(function (n) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "size";
+    b.id = "size-" + n;
+    b.textContent = n + "v" + n;
+    b.setAttribute("aria-pressed", String(n === teams));
+    b.addEventListener("click", function () { setTeams(n); });
+    sizeBox.appendChild(b);
+    sizeChips[n] = b;
+  });
+
+  function setTeams(n) {
+    teams = n;
+    DiscWars.setTeams(n);
+    Object.keys(sizeChips).forEach(function (k) {
+      sizeChips[k].setAttribute("aria-pressed", String(Number(k) === n));
+    });
+    try { localStorage.setItem("discwars.teams", String(n)); } catch (e) { /* fine */ }
+  }
 
   var still = window.matchMedia("(prefers-reduced-motion: reduce)");
   if (still.matches) {
@@ -253,7 +295,7 @@
   }
 
   function begin() {
-    DiscWars.init(canvas);
+    DiscWars.init(canvas, teams);
     if (themed) {
       DiscWars.setPalette(window.encomPalette);
       dress(window.encomPalette);

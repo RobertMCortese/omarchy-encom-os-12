@@ -57,7 +57,12 @@ A *Tron: Legacy* desktop for [Omarchy](https://omarchy.org): the ENCOM OS-12 loo
 - The riders wear the theme's colours; on the 1982 theme they go back to the original arcade game's blue against yellow.
 - Prefer another screensaver? Set `"screensaver": "boardroom"` (see below), which rotates through SYSTEM, GITHUB and WIKIPEDIA, or `"discwars"` for the disc duel.
 
-**The Disc Wars screensaver**: the lock screen's duel, full screen. The same two fighters, the same rings and the same throws — blocked on the shield, dodged with a flip or a sweep kick, banked off the ceiling to take a ring out from under someone — but with the password field gone and nothing else on the screen. It runs on a canvas rather than in QML (`discwars/`, also published on its own at [encom-disc-wars](https://github.com/RobertMCortese/encom-disc-wars)), takes its colours from the current theme like everything else, and closes on any input. Set `"screensaver": "discwars"` to use it.
+**The Disc Wars screensaver**: the lock screen's duel, full screen — and up to three on a side. The same fighters, rings and throws (blocked on the shield, dodged with a flip or a sweep kick, banked off the ceiling to take a ring out from under someone), but with the password field gone and nothing else on the screen. It runs on a canvas rather than in QML (`discwars/`, also published on its own at [encom-disc-wars](https://github.com/RobertMCortese/encom-disc-wars)), takes its colours from the current theme, and closes on any input.
+
+- `"screensaver": "discwars"` turns it on; `"discwars_teams"` picks the match — `1` for the duel, `2` or `3` for two ranks of platforms facing each other across the arena.
+- In a team match each fighter still has its own platform and four rings, and as many exchanges run at once as there are fighters on a side, so a 3v3 keeps three discs in the air. Fighters mostly stay on the opponent they are fighting, gang up on one that has been knocked off and is hanging from an edge, and now and then switch targets.
+- A broken ring rises again on its own after a while, so a match left running for hours never grinds every platform down to nothing.
+- The camera pulls back for a bigger match and drifts toward whichever exchange is in the air. The 1v1 keeps the fixed framing it was composed around.
 
 **Alerts**: disk nearly full, sustained heat, low battery, memory pressure, failed services and out-of-memory kills. They show in the theme's alert colour, ENCOM teal as standard: a **!** on the bar (visible over windows), a SYSTEM ALERT panel on the HUD, and in the Boardroom a SYSTEM ALERT box with an animated comms portrait, Star Fox style.
 

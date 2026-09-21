@@ -73,6 +73,8 @@ DEFAULT_CONFIG = {
     # Which screensaver runs on idle: "lightcycles", "discwars" or
     # "boardroom" (read by encom-screensaver).
     "screensaver": "lightcycles",
+    # Disc Wars only: 1 for the duel, 2 or 3 for a team match.
+    "discwars_teams": 1,
     # Where this machine sits on the globe. PST8PDT carries no coordinates,
     # so this is a sensible default; change it to your city.
     "home": {"name": "HOME", "lat": 34.05, "lon": -118.24},
@@ -1019,7 +1021,18 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
 
-    url = f"http://127.0.0.1:{port}{page}" + ("#screensaver" if args.screensaver else "")
+    frag = ""
+    if args.screensaver:
+        frag = "#screensaver"
+        if args.site == "discwars":
+            # Disc Wars takes the match size after the colon: 1 for the duel,
+            # 2 or 3 for a team match.
+            try:
+                teams = min(3, max(1, int(CONFIG.get("discwars_teams", 1))))
+            except (TypeError, ValueError):
+                teams = 1
+            frag += f":{teams}"
+    url = f"http://127.0.0.1:{port}{page}" + frag
     log("serving", url)
 
     if not args.serve_only:

@@ -60,7 +60,12 @@
   // ── Arena constants ───────────────────────────────────────────────────
   var floorY = -3.5;                 // the arena floor, far below
   var ceilY = 4.2;
-  var centreX = 8.0;                 // platform centres at -centreX and +centreX
+  var centreX = 8.0;                 // the two ranks stand this far either side
+  var rankGap = 5.4;                 // between teammates, across the arena's depth
+  // 1v1, 2v2 or 3v3. The arena, the camera and the number of duels running at
+  // once all follow from this.
+  var teamSize = 1;
+  var arenaZ = 5.5;                  // the glass wall, far enough back to clear the rings
   // Rings per fighter: the platform, then four rings; [inner, outer] radii.
   var ringRadii = [[0, 0.5], [0.56, 0.96], [1.02, 1.42], [1.48, 1.88], [1.94, 2.34]];
   var ringCount = ringRadii.length;
@@ -84,10 +89,32 @@
   function rand(a, b) { return a + Math.random() * (b - a); }
   function ease(u) { return u * u * (3 - 2 * u); }
 
-  function aimCamera() {
+  // Where the camera is drawn to: the middle of the arena, pulled toward
+  // whatever exchange is in the air. With one duel this barely moves; with
+  // three it keeps the busy corner of the arena in frame.
+  var look = [0, 0.7, 0];
+  function aimPoint() {
+    var sx = 0, sz = 0, n = 0;
+    for (var i = 0; i < ds.length; i++) {
+      if (ds[i].state !== "flight") continue;
+      sx += ds[i].pos[0]; sz += ds[i].pos[2]; n++;
+    }
+    // The duel's framing was composed around a fixed camera, so it keeps one;
+    // only a team match, which is too wide to hold in one shot, is followed.
+    var pull = (teamSize - 1) / 2;
+    if (!n || pull === 0) return [0, 0.7, 0];
+    return [sx / n * 0.35 * pull, 0.7, sz / n * 0.6 * pull];
+  }
+
+  function aimCamera(dt) {
     // A slow drift around the front of the arena, rising and falling.
-    var yaw = 0.22 * Math.sin(wall * 0.06), dist = 14.6, h = 2.2 + 0.5 * Math.sin(wall * 0.045 + 1);
-    var target = [0, 0.7, 0];
+    var want = aimPoint(), ease_ = Math.min(1, (dt || 0.016) * 0.7);
+    look = [look[0] + (want[0] - look[0]) * ease_, 0.7,
+            look[2] + (want[2] - look[2]) * ease_];
+    var yaw = 0.22 * Math.sin(wall * 0.06);
+    var dist = 14.6 + (teamSize - 1) * 2.9;
+    var h = 2.2 + 0.5 * Math.sin(wall * 0.045 + 1) + (teamSize - 1) * 0.35;
+    var target = look;
     var p = [target[0] + Math.sin(yaw) * dist, h, target[2] + Math.cos(yaw) * dist];
     var f = norm(sub(target, p)), r = norm(cross(f, [0, 1, 0])), u = cross(r, f);
     cam = { p: p, f: f, r: r, u: u, F: (H / 2) / Math.tan(fov / 2) };
@@ -195,7 +222,7 @@
   // [from, to, opacity, colour, width]
   var lines = [];
   function rebuildLines() {
-    var L = [], X = 16, Z = 5.5, lo = floorY, hi = ceilY;
+    var L = [], X = 16, Z = arenaZ, lo = floorY, hi = ceilY;
     for (var x = -X; x <= X; x += 1.5) L.push([[x, lo, -Z], [x, lo, Z], 0.1, line, 1]);
     for (var z = -Z; z <= Z + 0.01; z += 1) L.push([[-X, lo, z], [X, lo, z], 0.1, line, 1]);
     for (var wx = -X; wx <= X; wx += 4) L.push([[wx, lo, -Z], [wx, hi, -Z], 0.1, line, 1]);
@@ -208,19 +235,8 @@
   }
 
   // ── Rings ─────────────────────────────────────────────────────────────
-  // Every edge circle of every ring, as [fighter, ring, radius]; each is
-  // drawn as ringSegs short segments.
-  var ringCircles = (function () {
-    var C = [];
-    for (var p = 0; p < 2; p++)
-      for (var k = 0; k < ringCount; k++)
-        ringRadii[k].forEach(function (r) { if (r > 0) C.push([p, k, r]); });
-    return C;
-  })();
-
-  // Per fighter, per ring: state "up", "falling" (t = when it went) or
-  // "rising" (t = when it started back).
-  var rings = [0, 1].map(function () { return ringRadii.map(function () { return { s: "up" }; }); });
+  // Rings are per fighter, per ring: state "up", "falling" (t = when it went)
+  // or "rising" (t = when it started back). buildMatch fills them in.
 
   function ringLook(p, k) {                      // [y offset, opacity]
     var r = rings[p][k];
@@ -229,11 +245,14 @@
     return [0, 1];
   }
   function breakRing(p, k) { rings[p][k] = { s: "falling", t: wall }; }
-  function restoreRings() {
-    for (var p = 0; p < 2; p++)
-      for (var k = 0; k < ringCount; k++)
-        if (rings[p][k].s !== "up") rings[p][k] = { s: "rising", t: wall };
+  function restoreRings(p) {
+    for (var k = 0; k < ringCount; k++)
+      if (rings[p][k].s !== "up") rings[p][k] = { s: "rising", t: wall };
   }
+  // How long a ring stays gone before it rises again by itself. With more
+  // fighters there is more shooting, so without this an arena played long
+  // enough would end up with nothing left to stand on.
+  var ringBack = 26;
   function ringUp(p, k) { return rings[p][k].s !== "falling"; }
 
   // ── Fighters ──────────────────────────────────────────────────────────
@@ -246,14 +265,63 @@
     [12, 13, 0.08], [13, 14, 0.07], [14, 15, 0.06], [16, 17, 0.08], [17, 18, 0.07], [18, 19, 0.06]
   ];
 
-  function newFighter(cx, fv) {
-    return { cx: cx, ring: 0, ang: 0, pos: [cx, 0], fv: fv, move: null, clingRing: -1,
+  function newFighter(team, cx, cz, fv) {
+    return { team: team, cx: cx, cz: cz, foe: -1,
+             ring: 0, ang: 0, pos: [cx, cz], fv: fv, move: null, clingRing: -1,
              clingAt: null, willClimb: false, dropFrom: null, clip: "idle", t: rand(0, 1),
              speed: 1, from: null, blend: 1, block: 0, blockTarget: 0, pose: null,
              mode: "stand", mt: 0, yOff: 0, alpha: 1, flip: "side", flipSide: 1,
              high: false, grip: "right", evade: "duck" };
   }
-  var fs = [newFighter(-centreX, [1, 0]), newFighter(centreX, [-1, 0])];
+
+  var fs = [], ds = [], rings = [], ringCircles = [];
+
+  // Lay out a match: two ranks of `n` facing each other across the arena,
+  // each fighter on its own platform with its own four rings.
+  function buildMatch(n) {
+    teamSize = Math.max(1, Math.min(3, n | 0));
+    arenaZ = Math.max(5.5, rankGap * (teamSize - 1) / 2 + 3.2);
+    fs = []; ds = []; rings = []; ringCircles = [];
+    for (var team = 0; team < 2; team++) {
+      for (var i = 0; i < teamSize; i++) {
+        var cx = team === 0 ? -centreX : centreX;
+        var cz = (i - (teamSize - 1) / 2) * rankGap;
+        fs.push(newFighter(team, cx, cz, [team === 0 ? 1 : -1, 0]));
+        ds.push({ state: "back", pos: [0, 0, 0], trail: [], flight: null });
+        rings.push(ringRadii.map(function () { return { s: "up" }; }));
+      }
+    }
+    // Every edge circle of every ring, as [fighter, ring, radius].
+    for (var f = 0; f < fs.length; f++)
+      for (var k = 0; k < ringCount; k++)
+        ringRadii[k].forEach(function (r) { if (r > 0) ringCircles.push([f, k, r]); });
+    queue = []; wallQueue = []; pieces = []; chains = 0;
+    sparkData = [null, null, null, null];
+    rebuildLines();
+  }
+
+  function alive(p) {
+    var m = fs[p].mode;
+    return m !== "gone" && m !== "fall" && m !== "derez";
+  }
+  // Opponents still standing; falls back to any opponent so facing never breaks.
+  function foesOf(p) {
+    var mine = fs[p].team, live = [], any = [];
+    for (var i = 0; i < fs.length; i++) {
+      if (fs[i].team === mine) continue;
+      any.push(i);
+      if (alive(i)) live.push(i);
+    }
+    return live.length ? live : any;
+  }
+  function nearestFoe(p) {
+    var f = fs[p], best = -1, bd = Infinity;
+    foesOf(p).forEach(function (i) {
+      var dx = fs[i].pos[0] - f.pos[0], dz = fs[i].pos[1] - f.pos[1], d = dx * dx + dz * dz;
+      if (d < bd) { bd = d; best = i; }
+    });
+    return best;
+  }
 
   var throwSpeed = 1.4;
   function releaseTime() { return Poses.clips.throw.release / Poses.fps / throwSpeed; }
@@ -443,7 +511,7 @@
 
   // ── Positions on the rings ────────────────────────────────────────────
   function ringMid(k) { return k === 0 ? 0 : (ringRadii[k][0] + ringRadii[k][1]) / 2; }
-  function groundAt(p, r, a) { return [fs[p].cx + Math.cos(a) * r, Math.sin(a) * r]; }
+  function groundAt(p, r, a) { return [fs[p].cx + Math.cos(a) * r, fs[p].cz + Math.sin(a) * r]; }
   function intactRings(p) {
     var out = [];
     for (var k = 0; k < ringCount; k++) if (ringUp(p, k)) out.push(k);
@@ -489,7 +557,7 @@
   // Hit: slide back a ring, away from the opponent; with no ring there (or
   // it is gone), slide off this one and hang from its edge.
   function knockBack(p) {
-    var f = fs[p], rel = [f.pos[0] - f.cx, f.pos[1]];
+    var f = fs[p], rel = [f.pos[0] - f.cx, f.pos[1] - f.cz];
     var awayOut = rel[0] * -f.fv[0] + rel[1] * -f.fv[1] >= 0 || f.ring === 0;
     var back = awayOut ? f.ring + 1 : f.ring - 1;
     var a = f.ring === 0 ? Math.atan2(-f.fv[1], -f.fv[0]) : f.ang;
@@ -520,7 +588,10 @@
   function updateMode(p) {
     var f = fs[p];
     // Facing: always towards the opponent.
-    var o = fs[1 - p].pos, dx = o[0] - f.pos[0], dz = o[1] - f.pos[1], l = Math.sqrt(dx * dx + dz * dz) || 1;
+    if (f.foe < 0 || !alive(f.foe)) f.foe = nearestFoe(p);
+    var o = fs[f.foe >= 0 ? f.foe : p].pos;
+    var dx = o[0] - f.pos[0], dz = o[1] - f.pos[1], l = Math.sqrt(dx * dx + dz * dz) || 1;
+    if (l < 1e-6) { dx = f.team === 0 ? 1 : -1; dz = 0; l = 1; }
     f.fv = [dx / l, dz / l];
     var hopY = 0;
     if (f.move) {
@@ -541,12 +612,12 @@
       if (f.willClimb && f.mt > 0.8) setMode(p, "climb");
     } else if (f.mode === "climb") {
       // Up and over the edge, onto the ring it was holding.
-      var c = Math.min(1, f.mt / 0.6), top = groundAt(p, ringMid(f.clingRing), Math.atan2(f.clingAt[1], f.clingAt[0] - f.cx));
+      var c = Math.min(1, f.mt / 0.6), top = groundAt(p, ringMid(f.clingRing), Math.atan2(f.clingAt[1] - f.cz, f.clingAt[0] - f.cx));
       f.yOff = hangOffset(p) * (1 - ease(c)) + 0.25 * Math.sin(Math.PI * c);
       f.pos = [f.clingAt[0] + (top[0] - f.clingAt[0]) * ease(c), f.clingAt[1] + (top[1] - f.clingAt[1]) * ease(c)];
       if (c >= 1) {
         f.ring = f.clingRing;
-        f.ang = Math.atan2(f.clingAt[1], f.clingAt[0] - f.cx);
+        f.ang = Math.atan2(f.clingAt[1] - f.cz, f.clingAt[0] - f.cx);
         f.clingRing = -1;
         f.willClimb = false;
         setMode(p, "stand");
@@ -576,10 +647,6 @@
   // ── Discs ─────────────────────────────────────────────────────────────
   // state: "back" (on the fighter's back), "hand", "shield", or "flight".
   var trailLen = 16;
-  var ds = [
-    { state: "back", pos: [0, 0, 0], trail: [], flight: null },
-    { state: "back", pos: [0, 0, 0], trail: [], flight: null }
-  ];
 
   function handWorld(p) { return toWorld(p, fs[p].pose, 19); }
   function chestWorld(p) { return toWorld(p, fs[p].pose, 9); }
@@ -619,20 +686,20 @@
   }
 
   // ── Derez debris ──────────────────────────────────────────────────────
-  var pieceCount = 100;
+  var pieceCount = 100;              // per fighter
+  var pieceCap = 320;                // across the arena, however many derez at once
   var pieces = [];
-  var piecesBorn = -100;
 
   // Break fighter p into pieces: each limb into six, the head into four.
   function shatter(p) {
     var f = fs[p], Wp = [];
     for (var j = 0; j < 20; j++) Wp.push(toWorld(p, f.pose, j));
-    var centre = lerp3(Wp[0], Wp[9], 0.5), col = p === 0 ? programHi : sentinelHi;
+    var centre = lerp3(Wp[0], Wp[9], 0.5), col = fs[p].team === 0 ? programHi : sentinelHi;
     var out = [];
     function piece(a, b, thick) {
       var mid = lerp3(a, b, 0.5), half = [(b[0] - a[0]) * 0.45, (b[1] - a[1]) * 0.45, (b[2] - a[2]) * 0.45];
       var dir = norm(sub(mid, centre)), k = rand(0.6, 2.2);
-      out.push({ mid: mid, half: half, thick: thick, col: col,
+      out.push({ mid: mid, half: half, thick: thick, col: col, born: wall,
                  vel: [dir[0] * k + rand(-0.5, 0.5), rand(0.8, 2.8), dir[2] * k + rand(-0.5, 0.5)],
                  axis: norm([rand(-1, 1), rand(-1, 1), rand(-1, 1)]), spin: rand(-9, 9) });
     }
@@ -645,8 +712,10 @@
       piece([hc[0] + Math.cos(a0) * 0.12, hc[1] + Math.sin(a0) * 0.13, hc[2]],
             [hc[0] + Math.cos(a1) * 0.12, hc[1] + Math.sin(a1) * 0.13, hc[2]], 0.05);
     }
-    pieces = out;
-    piecesBorn = wall;
+    // Two fighters can go at once in a team match, so clouds stack up rather
+    // than replacing each other; the oldest go if there are too many.
+    pieces = pieces.concat(out);
+    if (pieces.length > pieceCap) pieces = pieces.slice(pieces.length - pieceCap);
   }
 
   // Rotate v about unit axis k by angle t (Rodrigues).
@@ -658,11 +727,12 @@
 
   // Tumble the pieces down to the arena floor, bounce, settle and fade.
   function stepPieces(dt) {
-    var age = wall - piecesBorn;
-    var fade = age < 2.2 ? 1 : Math.max(0, 1 - (age - 2.2) / 1.0);
-    for (var i = 0; i < pieceCount; i++) {
+    var live = [];
+    for (var i = 0; i < pieces.length; i++) {
       var pc = pieces[i];
-      if (!pc || fade <= 0) continue;
+      var fade = wall - pc.born < 2.2 ? 1 : Math.max(0, 1 - (wall - pc.born - 2.2) / 1.0);
+      if (fade <= 0) continue;          // burnt out: drop it
+      live.push(pc);
       pc.vel[1] -= 9.8 * dt;
       pc.mid = [pc.mid[0] + pc.vel[0] * dt, pc.mid[1] + pc.vel[1] * dt, pc.mid[2] + pc.vel[2] * dt];
       pc.half = turn(pc.half, pc.axis, pc.spin * dt);
@@ -677,7 +747,7 @@
       var b = project([pc.mid[0] + pc.half[0], pc.mid[1] + pc.half[1], pc.mid[2] + pc.half[2]]);
       seg(1000 - (a[2] + b[2]) * 10, a, b, Math.max(1.5, 0.5 * pc.thick * cam.F / a[2]), pc.col, fade, "round");
     }
-    if (fade <= 0) pieces = [];
+    pieces = live;
   }
 
   // ── The duel ──────────────────────────────────────────────────────────
@@ -686,7 +756,7 @@
   // For what waits on something shown at real speed (a fall, a rez).
   var wallQueue = [];
   function afterWall(delay, fn) { wallQueue.push({ at: wall + delay, fn: fn }); }
-  function hot(p) { return p === 0 ? programHi : sentinelHi; }
+  function hot(p) { return fs[p].team === 0 ? programHi : sentinelHi; }
 
   function flyHome(p, from) {
     var mid = lerp3(from, handWorld(p), 0.5);
@@ -702,8 +772,9 @@
     play(p, "throw", throwSpeed);
     after(0.12, function () { ds[p].state = "hand"; });
     after(releaseTime(), function () {
-      if (canAct(p)) launch(handWorld(p));
-      else ds[p].state = "back";                      // lost its footing mid-throw
+      if (canAct(p)) { launch(handWorld(p)); return; }
+      ds[p].state = "back";                           // lost its footing mid-throw
+      after(0.4, function () { rally(p); });          // the exchange carries on without it
     });
   }
 
@@ -820,7 +891,7 @@
       var d = Math.random();
       var kind = d < 0.25 ? "sidestep" : d < 0.5 ? "flip" : d < 0.67 ? "duck" : d < 0.83 ? "sweep" : "split";
       var pass = kind === "duck" || kind === "sweep" ? 1.55 : kind === "split" ? 0.45 : rand(1.0, 1.6);
-      var glass = [fs[q].cx > 0 ? 15.8 : -15.8, pass, rand(-1.0, 1.0)];
+      var glass = [fs[q].cx > 0 ? 15.8 : -15.8, pass, fs[q].cz + rand(-1.0, 1.0)];
       var dur2 = rand(1.25, 1.4);
       var passAt = Math.abs(fs[q].pos[0] - from[0]) / Math.abs(glass[0] - from[0]);
       var lead = kind === "flip" ? 0.45 : kind === "sidestep" ? 0.4 : 0.45 * evadeTime[kind];
@@ -848,26 +919,63 @@
   }
 
   // Both throw together; the discs meet between them and fly home.
-  function clash() {
-    var m = [rand(-0.6, 0.6), rand(1.2, 1.9), rand(-1, 1)], landed = 0;
-    [0, 1].forEach(function (p) {
-      throwFrom(p, function (from) {
+  function clash(p, q) {
+    var m = lerp3(chestWorld(p), chestWorld(q), 0.5);
+    m[1] += rand(0.2, 0.7);
+    m[2] += rand(-0.6, 0.6);
+    var landed = 0;
+    [p, q].forEach(function (who) {
+      throwFrom(who, function (from) {
         var mid = lerp3(from, m, 0.5);
-        fly(p, [from, [mid[0], mid[1] + 0.3, mid[2] + rand(-0.6, 0.6)], m], 0.65, function () {
+        fly(who, [from, [mid[0], mid[1] + 0.3, mid[2] + rand(-0.6, 0.6)], m], 0.65, function () {
           if (++landed < 2) return;
           spark(m, "#ffffff");
-          flyHome(0, m); flyHome(1, m);
-          after(rand(1.0, 1.4), function () { rally(Math.random() < 0.5 ? 0 : 1); });
+          flyHome(p, m); flyHome(q, m);
+          after(rand(1.0, 1.4), function () { rally(Math.random() < 0.5 ? p : q); });
         });
       });
     });
   }
 
+  // Which opponent p goes after: finish one that is hanging on, otherwise
+  // mostly stay with the one it is already fighting, and now and then turn
+  // on someone else.
+  function pickFoe(p) {
+    var live = foesOf(p).filter(alive);
+    if (!live.length) return -1;
+    var hanging = live.filter(function (i) { return fs[i].mode === "cling" && !fs[i].willClimb; });
+    if (hanging.length && Math.random() < 0.7) return hanging[Math.floor(Math.random() * hanging.length)];
+    if (live.indexOf(fs[p].foe) >= 0 && Math.random() < 0.65) return fs[p].foe;
+    return live[Math.floor(Math.random() * live.length)];
+  }
+
+  // How many exchanges are running at once. Each one is a chain: an attack,
+  // and on the way out another attack from whoever it left standing. There
+  // is one chain per fighter per side, so a 3v3 keeps three duels going.
+  var chains = 0;
+  function startChain() {
+    var idle = [];
+    for (var i = 0; i < fs.length; i++)
+      if (alive(i) && canAct(i) && discHome(i) && !fs[i].move) idle.push(i);
+    if (!idle.length) return false;
+    chains++;
+    rally(idle[Math.floor(Math.random() * idle.length)]);
+    return true;
+  }
+
   // p's turn to attack.
   function rally(p) {
-    var q = 1 - p;
-    var out = ["gone", "fall", "derez"];
-    if (out.indexOf(fs[p].mode) >= 0 || out.indexOf(fs[q].mode) >= 0) return;
+    if (!alive(p)) {
+      // Whoever was carrying this exchange is gone; hand it to a teammate.
+      var mates = [];
+      for (var i = 0; i < fs.length; i++)
+        if (fs[i].team === fs[p].team && alive(i)) mates.push(i);
+      if (!mates.length) { chains = Math.max(0, chains - 1); return; }
+      p = mates[Math.floor(Math.random() * mates.length)];
+    }
+    var q = pickFoe(p);
+    if (q < 0) { chains = Math.max(0, chains - 1); return; }
+    fs[p].foe = q;
     if (!canAct(p)) { after(0.3, function () { rally(q); }); return; }
     if (!discHome(p)) { after(0.2, function () { rally(p); }); return; }
     if (fs[q].mode === "climb" || (fs[q].mode === "cling" && fs[q].willClimb)) {
@@ -884,7 +992,7 @@
         return;
       }
     }
-    if (canAct(q) && discHome(q) && Math.random() < 0.15) { clash(); return; }
+    if (canAct(q) && discHome(q) && Math.random() < 0.15) { clash(p, q); return; }
     if (Math.random() < 0.12) {
       // Bank one off the ceiling: at the ring it stands on, or another.
       var up = intactRings(q);
@@ -897,14 +1005,14 @@
   // After a fall: the rings rise again, the fighter rezzes back in at the
   // centre.
   function newRound(fallen) {
-    restoreRings();
+    restoreRings(fallen);
     var f = fs[fallen];
-    f.ring = 0; f.ang = 0; f.pos = [f.cx, 0]; f.move = null; f.clingRing = -1;
+    f.ring = 0; f.ang = 0; f.pos = [f.cx, f.cz]; f.move = null; f.clingRing = -1;
     setMode(fallen, "rez");
     f.yOff = 0; f.alpha = 0;
     play(fallen, "idle");
     ds[fallen] = { state: "back", pos: [0, 0, 0], trail: [], flight: null };
-    afterWall(1.2, function () { rally(1 - fallen); });
+    afterWall(1.2, function () { rally(fallen); });
   }
 
   // ── Frame ─────────────────────────────────────────────────────────────
@@ -922,11 +1030,20 @@
       wallQueue = wallQueue.filter(function (e) { return e.at > wall; });
       dueWall.forEach(function (e) { e.fn(); });
     }
-    // Rings that have finished rising are simply up again.
+    // Rings that have finished rising are simply up again, and one that has
+    // been gone a while starts back on its own.
     rings.forEach(function (rs) {
-      rs.forEach(function (r, k) { if (r.s === "rising" && wall - r.t > 0.9) rs[k] = { s: "up" }; });
+      rs.forEach(function (r, k) {
+        if (r.s === "rising" && wall - r.t > 0.9) rs[k] = { s: "up" };
+        else if (r.s === "falling" && wall - r.t > ringBack) rs[k] = { s: "rising", t: wall };
+      });
     });
-    aimCamera();
+    // Keep as many exchanges going as the match should have.
+    if (wall - lastChainCheck > 1.2) {
+      lastChainCheck = wall;
+      while (chains < teamSize && startChain()) { /* fill every slot */ }
+    }
+    aimCamera(realDt);
 
     dn = 0;                                    // start this frame's draw list
 
@@ -937,26 +1054,27 @@
 
     // Rings: project each edge circle once, then lay its segments.
     for (var ci = 0; ci < ringCircles.length; ci++) {
-      var cc = ringCircles[ci], look = ringLook(cc[0], cc[1]), cxw = fs[cc[0]].cx, pts = [];
+      var cc = ringCircles[ci], look = ringLook(cc[0], cc[1]), pts = [];
+      var cxw = fs[cc[0]].cx, czw = fs[cc[0]].cz;
       if (look[1] <= 0.01) continue;
       for (var a = 0; a <= ringSegs; a++) {
         var ang = 2 * Math.PI * a / ringSegs;
-        pts.push(project([cxw + Math.cos(ang) * cc[2], look[0], Math.sin(ang) * cc[2]]));
+        pts.push(project([cxw + Math.cos(ang) * cc[2], look[0], czw + Math.sin(ang) * cc[2]]));
       }
       var outer = cc[2] === ringRadii[cc[1]][1];
-      var col = cc[0] === 0 ? program : sentinel;
+      var col = fs[cc[0]].team === 0 ? program : sentinel;
       for (var sg = 0; sg < ringSegs; sg++) {
         seg(1000 - (pts[sg][2] + pts[sg + 1][2]) * 10 - 1, pts[sg], pts[sg + 1],
             outer ? 2 : 1.2, col, look[1] * (outer ? 0.95 : 0.55));
       }
     }
 
-    [0, 1].forEach(function (p) {
+    fs.forEach(function (_f, p) {
       var local = localPose(p, dt, realDt);
       updateMode(p);
       var f = fs[p];
       if (f.mode === "gone" || f.mode === "derez") return;
-      var col = p === 0 ? program : sentinel, alpha = f.alpha;
+      var col = f.team === 0 ? program : sentinel, alpha = f.alpha;
       var S = [];
       for (var j = 0; j < 20; j++) S.push(project(toWorld(p, local, j)));
       for (var k = 0; k < limbs.length; k++) {
@@ -974,7 +1092,7 @@
     });
 
     // Discs and their trails.
-    [0, 1].forEach(function (p) {
+    fs.forEach(function (_d, p) {
       var d = ds[p], f = fs[p];
       if (d.state === "flight") {
         var fl = d.flight, t = Math.min(1, (now - fl.t0) / fl.dur);
@@ -1001,15 +1119,15 @@
       }
       var di = put("disc", 1000 - s[2] * 20 + (d.state === "back" ? -3 : 3));
       di.x = s[0]; di.y = s[1]; di.w = dw; di.h = dh;
-      di.c = p === 0 ? program : sentinel;
-      di.hot = p === 0 ? programHi : sentinelHi;
+      di.c = f.team === 0 ? program : sentinel;
+      di.hot = f.team === 0 ? programHi : sentinelHi;
       di.o = alpha;
       // The trail: segments between successive positions, thinning out.
       var tp = d.trail.map(project);
       for (var g = 0; g + 1 < tp.length && g < trailLen; g++) {
         var tw = Math.max(1, 0.06 * cam.F / tp[g][2] * (1 - g / trailLen));
         seg(1000 - tp[g][2] * 20 - 1, tp[g], tp[g + 1], tw,
-            p === 0 ? programHi : sentinelHi, 0.85 * (1 - g / trailLen), "round");
+            f.team === 0 ? programHi : sentinelHi, 0.85 * (1 - g / trailLen), "round");
       }
     });
 
@@ -1033,7 +1151,7 @@
   }
 
   // ── Bootstrap ─────────────────────────────────────────────────────────
-  var canvas, last = 0, raf = 0, gen = 0, paused = false;
+  var canvas, last = 0, raf = 0, gen = 0, paused = false, lastChainCheck = 0;
 
   function resize() {
     var dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -1081,10 +1199,17 @@
       });
     },
     setPaused: setPaused,
-    init: function (el) {
+    // 1 for the duel, 2 or 3 for a team match. Restarts the fight.
+    setTeams: function (n) {
+      buildMatch(n);
+      for (var i = 0; i < teamSize; i++) after(0.8 + i * 0.35, startChain);
+    },
+    get teams() { return teamSize; },
+    init: function (el, n) {
       canvas = el;
       ctx = canvas.getContext("2d");
       applyPalette(THEMES["tron-legacy"]);
+      buildMatch(n || 1);
       resize();
       window.addEventListener("resize", resize);
       // A hidden tab stops getting animation frames; start a fresh loop on
@@ -1092,7 +1217,7 @@
       document.addEventListener("visibilitychange", function () {
         if (!document.hidden && !paused) start();
       });
-      after(0.8, function () { rally(0); });
+      for (var i = 0; i < teamSize; i++) after(0.8 + i * 0.35, startChain);
       start();
     }
   };
