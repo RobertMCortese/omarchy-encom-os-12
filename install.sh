@@ -54,27 +54,36 @@ retry() {
   "$@"
 }
 
+# Is the shell answering promptly, three times running? A shell mid-rebuild
+# answers slowly or not at all, and one that has just restarted keeps loading
+# plugins for a few seconds after its first answer.
+idle() {
+  local ok=0 i
+  for (( i = 0; i < $1; i++ )); do
+    if timeout 2 omarchy-shell shell listPlugins >/dev/null 2>&1; then
+      (( ++ok >= 3 )) && return 0
+    else
+      ok=0
+    fi
+    sleep 0.5
+  done
+  return 1
+}
+
 # Bring the shell to a clean, idle instance. As plugin files land in
 # ~/.config/omarchy/plugins/ the running shell rebuilds its plugin set, and
 # on several monitors one rebuild can outlast Omarchy's 2s plugin IPC timeout
 # and chain into more reloads, so clone/enable can fail against a busy shell.
-# Restart first, then wait until the registry answers promptly: a restarted
-# shell keeps loading plugins for a few seconds after ping first answers, and
-# the clone/enable that follows needs that to settle. Refused while locked is
-# tolerated; the step's own retry still runs against the live shell then.
+#
+# A shell that is already answering needs nothing: ask first, and only restart
+# one that is not, so a re-run of the installer does not restart the shell
+# once per plugin step. Refused while locked is tolerated; the step's own
+# retry still runs against the live shell then.
 settle() {
-  retry 2 omarchy restart shell || true
-  if (( ! DRY )); then
-    local ok=0 i
-    for (( i = 0; i < 40; i++ )); do
-      if timeout 2 omarchy-shell shell listPlugins >/dev/null 2>&1; then
-        (( ++ok >= 3 )) && break
-      else
-        ok=0
-      fi
-      sleep 0.5
-    done
-  fi
+  if (( DRY )); then printf '   would wait for the shell to settle\n'; return 0; fi
+  idle 6 && return 0
+  omarchy restart shell >/dev/null 2>&1 || true
+  idle 40 || true
 }
 
 # Copy a file or directory into place, backing up whatever was there first.
@@ -290,7 +299,7 @@ put "$REPO/hooks/encom-lock.hook" "$OMA/hooks/post-update.d/encom-lock.hook"
 settle
 if (( ! DRY )); then
   rm -f "$OMA/plugins/$USER_ID.lock/.upstream-sha256"       # force a refresh now
-  bash "$OMA/hooks/post-update.d/encom-lock.hook" 2>/dev/null
+  bash "$OMA/hooks/post-update.d/encom-lock.hook"
 fi
 
 # ── Hyprland: square corners, rez/derezz animations, cursor ──────────────

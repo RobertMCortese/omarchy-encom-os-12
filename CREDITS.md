@@ -56,6 +56,14 @@ original game had rather than the Legacy-era ones drawn here:
 
 They are CC0, so no terms attach, and the thanks stand.
 
+## Contributors
+
+**[silent-mobious](https://github.com/silent-mobious)** found and fixed three install-time bugs in
+[#1](https://github.com/RobertMCortese/omarchy-encom-os-12/pull/1): the launcher's app list coming
+up empty when the shell handle had not been injected yet, the ENCOM menu being left disabled by the
+theme apply that follows it, and a line continuation inside a brace expansion that stopped the
+Light Cycles assets from being copied at all.
+
 ## CMU Graphics Lab Motion Capture Database
 
 The lock screen fighters move with motion capture from the CMU Graphics Lab Motion Capture
