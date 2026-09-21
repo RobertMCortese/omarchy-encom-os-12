@@ -155,12 +155,21 @@ def shoot(theme, palette):
         subprocess.run(["rsvg-convert", "-w", str(W), "-h", str(H),
                         "-o", str(lines), str(tmp / "lines.svg")], check=True)
         subprocess.run([
-            "magick", str(src), "-coalesce", "-resize", f"{W}x{H}!",
+            "magick", str(src), "-coalesce",
+            # Fitted, not filled: a clip squarer than the window loses the
+            # bottom of the subject if it is made to fill, and two thin bars
+            # of ink cost less than a chin does.
+            "-resize", f"{W}x{H}", "-background", ink, "-gravity", "center",
+            "-extent", f"{W}x{H}",
             "-colorspace", "gray",
+            # Footage shot in daylight sits in a narrow band of greys, and a
+            # ramp laid straight over it comes out as fog. Pull it open first
+            # and put some snap in the middle.
+            "-auto-level", "-sigmoidal-contrast", "7,50%",
             # black to the theme's ink, white to its bright: the clip now
             # carries the theme's colour instead of its own.
             "+level-colors", f"{ink},{glow}",
-            "-fill", colour, "-colorize", "22",
+            "-fill", colour, "-colorize", "15",
             "null:", str(lines), "-layers", "composite",
             "-colorspace", "sRGB", "-type", "TrueColor", "-colors", "64",
             "-layers", "Optimize", str(out)], check=True)

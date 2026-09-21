@@ -128,7 +128,7 @@ covered by this repository's MIT licence:
 
 | File | Clip |
 |---|---|
-| `boardroom/assets/alert-portrait.gif` | Marv, Sam Flynn's Boston terrier, from *Tron: Legacy* |
+| `theme/tron-legacy/portrait-source.gif`, `boardroom/assets/alert-portrait.gif` | Marv, Sam Flynn's Boston terrier, from *Tron: Legacy* |
 | `theme/dillinger-systems/portrait.gif` | The Master Control Program from *Tron* (1982) |
 
 The other themes' portraits are drawn from code by `tools/make-portrait.py` and are ours.

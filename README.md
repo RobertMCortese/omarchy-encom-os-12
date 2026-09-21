@@ -75,8 +75,9 @@ The same desktop comes in six colours. Everything above follows the one you pick
 ![The six themes](docs/six-themes.png)
 
 And the face on the comms window, which every theme has: drawn from code in that theme's own
-colour, lit from one side, with the picture interlaced and a band rolling down it. Dillinger's is
-the one piece of footage among them, put through the same ramp so it sits with the rest.
+colour, lit from one side, with the picture interlaced and a band rolling down it. Two are
+footage rather than drawings — Marv on TRON Legacy and the MCP on Dillinger — pulled open for
+contrast and put through the same ramp, so they sit on the same screen as the rest.
 
 ![The six portraits](docs/portraits.png)
 
