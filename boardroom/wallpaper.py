@@ -36,27 +36,48 @@ FPS_CAP = """
   // Frame-rate cap plus pause switch, installed before the page's scripts so
   // its render loop only ever sees this requestAnimationFrame.
   var interval = 1000 / %d, last = 0, queue = [];
-  var paused = false, running = true;
+  var paused = false, gen = 0;
   var native = window.requestAnimationFrame.bind(window);
 
-  function pump(now) {
-    if (paused) { running = false; return; }   // stop the native loop entirely
-    if (now - last >= interval - 1) {
-      last = now;
-      var run = queue; queue = [];
-      for (var i = 0; i < run.length; i++) { try { run[i](now); } catch (e) {} }
-    }
-    native(pump);
+  // One pump per generation. Resuming bumps the generation, which retires any
+  // older pump still in flight, so a resume can always start a fresh loop
+  // without ever ending up with two of them running at once.
+  function start() {
+    var mine = ++gen;
+    last = 0;
+    native(function pump(now) {
+      if (paused || mine !== gen) return;      // paused, or retired by a newer pump
+      if (now - last >= interval - 1) {
+        last = now;
+        var run = queue; queue = [];
+        for (var i = 0; i < run.length; i++) { try { run[i](now); } catch (e) {} }
+      }
+      native(pump);
+    });
   }
 
   window.requestAnimationFrame = function (cb) { queue.push(cb); return queue.length; };
   // Called by wallpaper.py. Paused, the page stops drawing (its last frame
   // stays on screen); resumed, it carries on where it left off.
+  //
+  // Resuming always starts a new pump rather than trying to work out whether
+  // the old one is still alive. It usually is not: pausing hides the view, and
+  // WebKit suspends a hidden page's requestAnimationFrame outright -- often
+  // before the running pump gets the frame it would have noticed the pause on.
+  // Anything that tracked liveness from in here would be guessing, and a wrong
+  // guess leaves the wallpaper frozen until the service is restarted.
   window.__encomSetPaused = function (p) {
     paused = !!p;
-    if (!paused && !running) { running = true; last = 0; native(pump); }
+    if (!paused) start();
   };
-  native(pump);
+
+  // WebKit can suspend and resume the page on its own account, so heal on the
+  // way back rather than waiting to be told.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && !paused) start();
+  });
+
+  start();
 })();
 """
 
@@ -202,18 +223,25 @@ def main():
             pass                         # no frame yet: an empty still is fine
         stack.set_visible_child_name("still")
 
+    def set_paused(paused):
+        view.evaluate_javascript(
+            f"window.__encomSetPaused && window.__encomSetPaused({str(paused).lower()})",
+            -1, None, None, None, None, None)
+
     def tick():
         paused = False if always else not should_animate()
         if paused != state["paused"]:
             state["paused"] = paused
-            view.evaluate_javascript(
-                f"window.__encomSetPaused && window.__encomSetPaused({str(paused).lower()})",
-                -1, None, None, None, None, None)
             if paused:
+                set_paused(True)
                 view.get_snapshot(WebKit2.SnapshotRegion.VISIBLE, WebKit2.SnapshotOptions.NONE,
                                   None, lambda v, r: freeze(r))
             else:
+                # Show the view before resuming: WebKit suspends a hidden
+                # page's timers and animation frames, so a resume delivered
+                # while it is still hidden has nothing to start.
                 stack.set_visible_child_name("live")
+                set_paused(False)
         return True
 
     # Re-apply after every page load (the Boardroom reloads the view it shows).
