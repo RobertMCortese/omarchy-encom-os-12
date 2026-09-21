@@ -156,9 +156,9 @@
   </div>
 </div>
 
-<script src="palette.js"></script>
-<script src="poses.js"></script>
-<script src="discwars.js"></script>
+<script src="palette.js?v=e46f3c02"></script>
+<script src="poses.js?v=573e2db4"></script>
+<script src="discwars.js?v=7899af91"></script>
 <script>
 (function () {
   "use strict";
@@ -274,12 +274,27 @@
   });
 
   function setTeams(n) {
+    // Guard against a cached engine older than this page. Script URLs carry a
+    // hash of their contents so the two cannot normally drift apart, but a
+    // stale proxy or a hard-held cache still can, and the failure to avoid is
+    // the silent one: a control that looks live and does nothing at all.
+    if (typeof DiscWars.setTeams !== "function") { stale(); return; }
     teams = n;
-    DiscWars.setTeams(n);
     Object.keys(sizeChips).forEach(function (k) {
       sizeChips[k].setAttribute("aria-pressed", String(Number(k) === n));
     });
+    DiscWars.setTeams(n);
     try { localStorage.setItem("discwars.teams", String(n)); } catch (e) { /* fine */ }
+  }
+
+  // Say so, and offer the one thing that fixes it.
+  var saidStale = false;
+  function stale() {
+    if (saidStale) return;
+    saidStale = true;
+    var hint = document.querySelector(".hint");
+    hint.textContent = "This page is newer than the copy your browser cached \u2014 reload to switch sides";
+    hint.style.color = "var(--accent)";
   }
 
   var still = window.matchMedia("(prefers-reduced-motion: reduce)");
