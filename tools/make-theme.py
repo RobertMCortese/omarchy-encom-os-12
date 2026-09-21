@@ -82,6 +82,22 @@ def restyle(colour, anchor, target):
     return hls_to_hex(t_hue, light * light_ratio, sat * sat_ratio)
 
 
+def warm(colour, accent):
+    """Lean a tint towards orange as it lightens.
+
+    A pale tint of a red reads pink however its hue is measured, so a red
+    theme's lighter colours rotate towards orange in proportion to how far
+    above the accent's own lightness they sit. Themes whose accent is not a
+    red are left alone: nothing else in the wheel has this problem."""
+    a_hue, a_light, _ = hex_to_hls(accent)
+    deg = a_hue * 360
+    if not (deg < 25 or deg > 335):
+        return colour
+    hue, light, sat = hex_to_hls(colour)
+    lift = max(0.0, light - a_light)
+    return hls_to_hex((hue * 360 + min(26.0, lift * 95)) / 360, light, sat)
+
+
 def palette_for(accent, contrast):
     """Every base colour that moves, mapped to its new value."""
     accent_hue = hex_to_hls(accent)[0] * 360
@@ -89,7 +105,7 @@ def palette_for(accent, contrast):
     for role, colours in FAMILY.items():
         for c in colours:
             if role.startswith("accent"):
-                out[c] = restyle(c, "#6fc3df", accent)
+                out[c] = warm(restyle(c, "#6fc3df", accent), accent)
             elif role.startswith("contrast"):
                 out[c] = restyle(c, "#ff8c21", contrast)
             else:                       # the near-blacks: a faint accent tint
@@ -286,9 +302,8 @@ SIGIL = {"dillinger-systems": "wedge"}
 
 # Base colours a theme remaps by hand, before anything is swapped, so the
 # change reaches the terminal and editor palettes too and not just the JSON.
-# A pale tint of a red reads pink, whatever its hue says, so Dillinger's
-# highlight leans towards orange as it lightens instead of washing out.
-TINT = {"dillinger-systems": {"#a8ecff": "#ff8a5c"}}
+# Nothing needs one at the moment: warm() handles the reds.
+TINT = {}
 
 # Palette keys a theme sets for itself, after the colour swap has run.
 # Uprising's highlight is the Renegade's cool white rather than a pale tint

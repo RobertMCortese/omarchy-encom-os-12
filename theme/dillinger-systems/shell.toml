@@ -4,7 +4,7 @@
 [bar]
 background       = "#090505"
 background-alpha = 0.82
-text             = "#ff6e66"
+text             = "#ff8866"
 active           = "#7fd0ff"
 scale-with-font  = true
 size-horizontal  = 26
@@ -16,22 +16,22 @@ active-border-foreground = "rgba(6fc3dfff) rgba(a8ecffff) 45deg"
 
 [controls]
 # Idle chrome reads as unlit circuit trace.
-normal-color        = "#ff6e66"
+normal-color        = "#ff8866"
 normal-fill-alpha   = 0.03
 normal-border       = "#ff3b30"
 normal-border-width = 1
 normal-border-alpha = 0.30
 
 # Hover / keyboard cursor: the trace energises.
-hover-cursor-color        = "#ffc0bd"
+hover-cursor-color        = "#ffddbd"
 hover-cursor-fill-alpha   = 0.10
-hover-cursor-border       = "#ff8a5c"
+hover-cursor-border       = "#ffa781"
 hover-cursor-border-width = 1
 hover-cursor-border-alpha = 0.75
 
-focus-color        = "#ffc0bd"
+focus-color        = "#ffddbd"
 focus-fill-alpha   = 0.10
-focus-border       = "#ff8a5c"
+focus-border       = "#ffa781"
 focus-border-width = 1
 focus-border-alpha = 0.75
 
@@ -55,7 +55,7 @@ base-size = 12
 [popups]
 background       = "#090505"
 background-alpha = 0.94
-text             = "#ffa5a0"
+text             = "#ffc6a0"
 border           = "hyprland.active-border"
 border-alpha     = 1.0
 border-width     = 1
@@ -63,14 +63,14 @@ border-width     = 1
 [tooltip]
 background       = "#040202"
 background-alpha = 0.95
-text             = "#ff8a5c"
+text             = "#ffa781"
 border           = "hyprland.active-border-foreground"
 border-alpha     = 0.9
 
 [notifications]
 background       = "#090505"
 background-alpha = 0.94
-text             = "#ffa5a0"
+text             = "#ffc6a0"
 border           = "hyprland.active-border"
 border-alpha     = 1.0
 border-width     = 1
@@ -79,35 +79,35 @@ countdown        = "#ff3b30"
 [launcher]
 background                = "#090505"
 background-alpha          = 0.90
-text                      = "#ffa5a0"
+text                      = "#ffc6a0"
 border                    = "hyprland.active-border-foreground"
 border-alpha              = 1.0
 scrim                     = "#040202"
 scrim-alpha               = 0.62
 selected-background       = "#ff3b30"
 selected-background-alpha = 0.16
-selected-text             = "#ffc0bd"
+selected-text             = "#ffddbd"
 selected-border           = "hyprland.active-border-foreground"
 selected-border-alpha     = 0.65
 
 [menu]
 background                = "#090505"
 background-alpha          = 0.94
-text                      = "#ffa5a0"
+text                      = "#ffc6a0"
 border                    = "hyprland.active-border-foreground"
 border-alpha              = 1.0
 scrim                     = "#040202"
 scrim-alpha               = 0.62
 selected-background       = "#ff3b30"
 selected-background-alpha = 0.16
-selected-text             = "#ffc0bd"
+selected-text             = "#ffddbd"
 selected-border           = "hyprland.active-border-foreground"
 selected-border-alpha     = 0.65
 
 [polkit]
 background       = "#090505"
 background-alpha = 0.95
-text             = "#ffa5a0"
+text             = "#ffc6a0"
 text-error       = "#d1ff3d"
 border           = "hyprland.active-border"
 border-error     = "#d1ff3d"
@@ -119,7 +119,7 @@ accent           = "#ff3b30"
 [lock]
 background       = "#090505"
 background-alpha = 0.72
-text             = "#ffc0bd"
+text             = "#ffddbd"
 placeholder      = "#832e29"
 text-error       = "#d1ff3d"
 border           = "hyprland.active-border"
@@ -132,8 +132,8 @@ selection-alpha  = 0.45
 [image-picker]
 scrim                   = "#040202"
 scrim-alpha             = 0.66
-text                    = "#ffa5a0"
-selected-border         = "#ff8a5c"
+text                    = "#ffc6a0"
+selected-border         = "#ffa781"
 selected-border-alpha   = 1.0
 unselected-border       = "#ff3b30"
 unselected-border-alpha = 0.22

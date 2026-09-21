@@ -755,12 +755,20 @@ def boardroom_colours(palette):
                                    (BOARDROOM_AMBERS, "#ffcc00", contrast)):
         _, _, a_sat = _hls(anchor)
         t_hue, _, t_sat = _hls(target)
+        _, t_light, _ = _hls(target)
+        red = t_hue * 360 < 25 or t_hue * 360 > 335
         for colour in family:
             _, light, sat = _hls(colour)
             # Keep each colour's own lightness: these are already tuned for
             # the layout, and stretching them washes the lighter ones out.
             # Only the hue moves, with saturation scaled to the theme's.
-            out[colour] = _hex(t_hue, light, sat * (t_sat / a_sat if a_sat else 1))
+            hue = t_hue * 360
+            if red:
+                # A pale tint of a red reads pink, so the lighter a colour is
+                # the further it leans towards orange — the same rule the
+                # theme's own palette is built with.
+                hue += min(26.0, max(0.0, light - t_light) * 95)
+            out[colour] = _hex(hue / 360, light, sat * (t_sat / a_sat if a_sat else 1))
     return out
 
 
