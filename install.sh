@@ -39,6 +39,44 @@ say()  { printf '\e[36m::\e[0m %s\n' "$*"; }
 warn() { printf '\e[33m!!\e[0m %s\n' "$*" >&2; }
 run()  { if (( DRY )); then printf '   would run: %s\n' "$*"; else "$@"; fi; }
 
+# Omarchy shell IPC times out after 2s. The shell rebuilds its plugin set as
+# files land in ~/.config/omarchy/plugins/ and, on several monitors with many
+# plugins, a rebuild can outlast that window, so plugin clone/enable can fail
+# against a busy shell. Retry until the rebuild settles.
+retry() {
+  local tries=$1; shift
+  if (( DRY )); then printf '   would run: %s\n' "$*"; return 0; fi
+  local i
+  for (( i = 0; i < tries; i++ )); do
+    "$@" >/dev/null 2>&1 && return 0
+    sleep 1
+  done
+  "$@"
+}
+
+# Bring the shell to a clean, idle instance. As plugin files land in
+# ~/.config/omarchy/plugins/ the running shell rebuilds its plugin set, and
+# on several monitors one rebuild can outlast Omarchy's 2s plugin IPC timeout
+# and chain into more reloads, so clone/enable can fail against a busy shell.
+# Restart first, then wait until the registry answers promptly: a restarted
+# shell keeps loading plugins for a few seconds after ping first answers, and
+# the clone/enable that follows needs that to settle. Refused while locked is
+# tolerated; the step's own retry still runs against the live shell then.
+settle() {
+  retry 2 omarchy restart shell || true
+  if (( ! DRY )); then
+    local ok=0 i
+    for (( i = 0; i < 40; i++ )); do
+      if timeout 2 omarchy-shell shell listPlugins >/dev/null 2>&1; then
+        (( ++ok >= 3 )) && break
+      else
+        ok=0
+      fi
+      sleep 0.5
+    done
+  fi
+}
+
 # Copy a file or directory into place, backing up whatever was there first.
 put() {
   local src=$1 dst=$2
@@ -147,8 +185,7 @@ if (( ! DRY )); then
   curl -sfL -o "$TMP/lc/app/three.min.js" "https://cdn.jsdelivr.net/npm/three@$THREE_VER/three.min.js"
   echo "$THREE_SHA  $TMP/lc/app/three.min.js" | sha256sum -c --quiet - \
     || { echo "three.js download did not match its checksum" >&2; exit 1; }
-  cp "$REPO"/lightcycles/{index.html,encom-arena.js,encom-game.js,arenaWalls2.png,\
-                          classic-cycle.json,classic-trail.png} "$TMP/lc/app/"
+  cp "$REPO"/lightcycles/{index.html,encom-arena.js,encom-game.js,arenaWalls2.png,classic-cycle.json,classic-trail.png} "$TMP/lc/app/"
   put_own "$TMP/lc" "$LIGHTCYCLES"
 fi
 
@@ -184,14 +221,16 @@ put "$REPO/bar/scripts/encom-telemetry" "$OMA/bar/scripts/encom-telemetry"
 # ── HUD ────────────────────────────────────────────────────────────────────
 say "HUD: desktop panels, boot cascade, alerts, screensaver trigger"
 put_own "$REPO/hud" "$OMA/plugins/encom.hud"
-run omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-run omarchy plugin enable encom.hud >/dev/null
+settle
+retry 8 omarchy plugin enable encom.hud
 
 # ── Workspace nodes and chamfered launcher (clones of Omarchy's own) ─────
 say "Shell: workspace nodes and the chamfered launcher"
-if [[ ! -d $OMA/plugins/$USER_ID.workspaces ]]; then run omarchy plugin clone omarchy.workspaces >/dev/null; fi
+settle
+if [[ ! -d $OMA/plugins/$USER_ID.workspaces ]]; then run omarchy plugin clone omarchy.workspaces >/dev/null 2>&1; fi
 put "$REPO/shell/workspaces/Workspaces.qml" "$OMA/plugins/$USER_ID.workspaces/Workspaces.qml"
-if [[ ! -d $OMA/plugins/$USER_ID.menu ]]; then run omarchy plugin clone omarchy.menu >/dev/null; fi
+settle
+if [[ ! -d $OMA/plugins/$USER_ID.menu ]]; then run omarchy plugin clone omarchy.menu >/dev/null 2>&1; fi
 put "$REPO/shell/menu/encom-chamfer-patch.py" "$OMA/plugins/$USER_ID.menu/encom-chamfer-patch.py"
 run python3 "$OMA/plugins/$USER_ID.menu/encom-chamfer-patch.py" >/dev/null
 # Make the clone menu-only. As a bar widget too, Omarchy counts it as off
@@ -207,8 +246,8 @@ m.get("entryPoints", {}).pop("barWidget", None); m.pop("barWidget", None)
 json.dump(m, open(p, "w"), indent=2); open(p, "a").write("\n")
 PYEOF2
 fi
-run omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-run omarchy plugin enable "$USER_ID.menu" >/dev/null
+settle
+retry 8 omarchy plugin enable "$USER_ID.menu"
 
 # Bar layout: ENCOM ident and workspace nodes on the left, gauges first on
 # the right. Everything else in your layout is left where it is.
@@ -242,14 +281,16 @@ fi
 # and fingerprint handling) stays Omarchy's own. encom-lock.hook refreshes the
 # clone from omarchy.lock after every Omarchy update.
 say "Lock screen: disc wars (Omarchy's lock, with the scene added)"
-if [[ ! -d $OMA/plugins/$USER_ID.lock ]]; then run omarchy plugin clone omarchy.lock >/dev/null; fi
+settle
+if [[ ! -d $OMA/plugins/$USER_ID.lock ]]; then run omarchy plugin clone omarchy.lock >/dev/null 2>&1; fi
 put "$REPO/lock/DiscWars.qml" "$OMA/plugins/$USER_ID.lock/DiscWars.qml"
 put "$REPO/lock/poses.js" "$OMA/plugins/$USER_ID.lock/poses.js"
 put "$REPO/lock/encom-lock-patch.py" "$OMA/plugins/$USER_ID.lock/encom-lock-patch.py"
 put "$REPO/hooks/encom-lock.hook" "$OMA/hooks/post-update.d/encom-lock.hook"
+settle
 if (( ! DRY )); then
   rm -f "$OMA/plugins/$USER_ID.lock/.upstream-sha256"       # force a refresh now
-  bash "$OMA/hooks/post-update.d/encom-lock.hook"
+  bash "$OMA/hooks/post-update.d/encom-lock.hook" 2>/dev/null
 fi
 
 # ── Hyprland: square corners, rez/derezz animations, cursor ──────────────
@@ -312,6 +353,12 @@ put "$REPO/hooks/encom-splash" "$HOME/.local/bin/encom-splash"
 say "Applying the theme"
 run omarchy theme set tron-legacy >/dev/null
 run omarchy theme bg set "$HOME/.local/state/omarchy/current/theme/backgrounds/01-grid-horizon.png" >/dev/null
+# Theme switches rewrite shell.json from the theme's own template, whose
+# plugins list knows nothing of our clones -- the ENCOM launcher would end up
+# disabled (blank super+space / menu icon) just like a fresh-but-unenabled menu.
+# Re-enable it after the apply so the install always leaves the menu summonable.
+settle
+retry 8 omarchy plugin enable "$USER_ID.menu"
 run hyprctl reload >/dev/null
 if (( ! DRY )) && [[ -n $(hyprctl configerrors 2>/dev/null | tr -d '[:space:]') ]]; then
   warn "Hyprland reports config errors:"; hyprctl configerrors
