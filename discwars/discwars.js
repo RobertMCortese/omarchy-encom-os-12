@@ -239,21 +239,21 @@
   // or "rising" (t = when it started back). buildMatch fills them in.
 
   function ringLook(p, k) {                      // [y offset, opacity]
-    var r = rings[p][k];
+    var r = pads[p].rings[k];
     if (r.s === "falling") { var a = wall - r.t; return [-4.5 * a * a, Math.max(0, 1 - a / 1.1)]; }
     if (r.s === "rising") { var b = Math.min(1, (wall - r.t) / 0.9); return [-1.5 * (1 - ease(b)), b]; }
     return [0, 1];
   }
-  function breakRing(p, k) { rings[p][k] = { s: "falling", t: wall }; }
+  function breakRing(p, k) { pads[p].rings[k] = { s: "falling", t: wall }; }
   function restoreRings(p) {
     for (var k = 0; k < ringCount; k++)
-      if (rings[p][k].s !== "up") rings[p][k] = { s: "rising", t: wall };
+      if (pads[p].rings[k].s !== "up") pads[p].rings[k] = { s: "rising", t: wall };
   }
   // How long a ring stays gone before it rises again by itself. With more
   // fighters there is more shooting, so without this an arena played long
   // enough would end up with nothing left to stand on.
   var ringBack = 26;
-  function ringUp(p, k) { return rings[p][k].s !== "falling"; }
+  function ringUp(p, k) { return pads[p].rings[k].s !== "falling"; }
 
   // ── Fighters ──────────────────────────────────────────────────────────
   // Joints (Poses.joints): 0 pelvis, 1/5 hips, 2/6 knees, 3/7 ankles, 4/8 toes,
@@ -265,36 +265,44 @@
     [12, 13, 0.08], [13, 14, 0.07], [14, 15, 0.06], [16, 17, 0.08], [17, 18, 0.07], [18, 19, 0.06]
   ];
 
-  function newFighter(team, cx, cz, fv) {
-    return { team: team, cx: cx, cz: cz, foe: -1,
-             ring: 0, ang: 0, pos: [cx, cz], fv: fv, move: null, clingRing: -1,
+  function newFighter(team, home, fv) {
+    var pd = pads[home];
+    return { team: team, home: home, pad: home, foe: -1,
+             ring: 0, ang: 0, pos: [pd.cx, pd.cz], fv: fv, move: null, clingRing: -1,
              clingAt: null, willClimb: false, dropFrom: null, clip: "idle", t: rand(0, 1),
              speed: 1, from: null, blend: 1, block: 0, blockTarget: 0, pose: null,
              mode: "stand", mt: 0, yOff: 0, alpha: 1, flip: "side", flipSide: 1,
              high: false, grip: "right", evade: "duck" };
   }
 
-  var fs = [], ds = [], rings = [], ringCircles = [];
+  // A platform and its four rings. A fighter starts on its own and can end
+  // up on a teammate's, so the two are kept apart.
+  var pads = [];
+  var fs = [], ds = [], ringCircles = [];
 
   // Lay out a match: two ranks of `n` facing each other across the arena,
   // each fighter on its own platform with its own four rings.
   function buildMatch(n) {
     teamSize = Math.max(1, Math.min(3, n | 0));
     arenaZ = Math.max(5.5, rankGap * (teamSize - 1) / 2 + 3.2);
-    fs = []; ds = []; rings = []; ringCircles = [];
+    pads = []; fs = []; ds = []; ringCircles = [];
     for (var team = 0; team < 2; team++) {
       for (var i = 0; i < teamSize; i++) {
-        var cx = team === 0 ? -centreX : centreX;
-        var cz = (i - (teamSize - 1) / 2) * rankGap;
-        fs.push(newFighter(team, cx, cz, [team === 0 ? 1 : -1, 0]));
-        ds.push({ state: "back", pos: [0, 0, 0], trail: [], flight: null });
-        rings.push(ringRadii.map(function () { return { s: "up" }; }));
+        pads.push({ team: team, rank: i,
+                    cx: team === 0 ? -centreX : centreX,
+                    cz: (i - (teamSize - 1) / 2) * rankGap,
+                    rings: ringRadii.map(function () { return { s: "up" }; }) });
       }
     }
-    // Every edge circle of every ring, as [fighter, ring, radius].
-    for (var f = 0; f < fs.length; f++)
+    // One fighter per platform to begin with, in the same order.
+    pads.forEach(function (pd, i) {
+      fs.push(newFighter(pd.team, i, [pd.team === 0 ? 1 : -1, 0]));
+      ds.push({ state: "back", pos: [0, 0, 0], trail: [], flight: null });
+    });
+    // Every edge circle of every ring, as [platform, ring, radius].
+    for (var g = 0; g < pads.length; g++)
       for (var k = 0; k < ringCount; k++)
-        ringRadii[k].forEach(function (r) { if (r > 0) ringCircles.push([f, k, r]); });
+        ringRadii[k].forEach(function (r) { if (r > 0) ringCircles.push([g, k, r]); });
     queue = []; wallQueue = []; pieces = []; chains = 0;
     score = [0, 0]; banner = "";
     sparkData = [null, null, null, null];
@@ -512,22 +520,54 @@
 
   // ── Positions on the rings ────────────────────────────────────────────
   function ringMid(k) { return k === 0 ? 0 : (ringRadii[k][0] + ringRadii[k][1]) / 2; }
-  function groundAt(p, r, a) { return [fs[p].cx + Math.cos(a) * r, fs[p].cz + Math.sin(a) * r]; }
-  function intactRings(p) {
+  function groundAt(p, r, a) {
+    var pd = pads[fs[p].pad];
+    return [pd.cx + Math.cos(a) * r, pd.cz + Math.sin(a) * r];
+  }
+  function intactRingsOn(padIdx) {
     var out = [];
-    for (var k = 0; k < ringCount; k++) if (ringUp(p, k)) out.push(k);
+    for (var k = 0; k < ringCount; k++) if (ringUp(padIdx, k)) out.push(k);
+    return out;
+  }
+  function intactRings(p) { return intactRingsOn(fs[p].pad); }
+
+  // A platform with nobody standing on it. A fighter commits to a platform
+  // the moment it starts moving, so two cannot claim the same one.
+  function occupied(padIdx) {
+    for (var i = 0; i < fs.length; i++)
+      if (alive(i) && fs[i].pad === padIdx) return true;
+    return false;
+  }
+  // Its own side's platforms next to this one in the rank, standing empty.
+  // One is empty because the teammate who had it is out of the round.
+  function freeNeighbours(p) {
+    var here = pads[fs[p].pad], out = [];
+    for (var i = 0; i < pads.length; i++) {
+      if (pads[i].team !== here.team) continue;
+      if (Math.abs(pads[i].rank - here.rank) !== 1) continue;
+      if (occupied(i) || !intactRingsOn(i).length) continue;
+      out.push(i);
+    }
     return out;
   }
 
-  // Move to ring k at angle a over dur fight-seconds, hopping `hop` metres.
-  function relocate(p, k, a, dur, hop) {
-    var f = fs[p];
+  // Move to ring k of platform `padIdx` at angle a over dur fight-seconds,
+  // hopping `hop` metres. Crossing to another platform is further than
+  // stepping between rings, so it takes longer and goes higher.
+  function relocate(p, padIdx, k, a, dur, hop) {
+    var f = fs[p], across = padIdx !== f.pad;
+    f.pad = padIdx;                       // claimed from here on
     f.ring = k; f.ang = a;
-    f.move = { from: f.pos.slice(), to: groundAt(p, ringMid(k), a), t0: now, dur: dur, hop: hop };
+    f.move = { from: f.pos.slice(), to: groundAt(p, ringMid(k), a), t0: now,
+               dur: across ? dur * 1.3 : dur, hop: across ? Math.max(hop, 0.6) : hop };
   }
 
   // Where a dodge can go: the nearest ring still up that is not this one
   // (across a gap if need be; never off the edge), and round a little.
+  // Where a dodge can go, as [platform, ring, angle]: the nearest ring still
+  // up that is not this one (across a gap if need be, never off the edge) --
+  // or, once a teammate is out and its platform stands empty, across to that
+  // instead, landing on the side it came from.
   function dodgeSpot(p) {
     var f = fs[p], best = [];
     intactRings(p).forEach(function (k) {
@@ -536,9 +576,19 @@
       if (!best.length || d < best[0][1]) best = [[k, d]];
       else if (d === best[0][1]) best.push([k, d]);
     });
+    var across = freeNeighbours(p);
+    // The longer jump is the rarer one: it is only taken about a third of the
+    // time it is on offer, and always when there is nowhere else to go.
+    if (across.length && (!best.length || Math.random() < 0.35)) {
+      var n = across[Math.floor(Math.random() * across.length)];
+      var up = intactRingsOn(n);
+      var here = pads[f.pad], there = pads[n];
+      var facing = Math.atan2(here.cz - there.cz, here.cx - there.cx);
+      return [n, up[Math.floor(Math.random() * up.length)], facing + rand(-0.5, 0.5)];
+    }
     if (!best.length) return null;
     var k = best[Math.floor(Math.random() * best.length)][0];
-    return [k, f.ang + (Math.random() < 0.5 ? -1 : 1) * rand(0.6, 1.3)];
+    return [f.pad, k, f.ang + (Math.random() < 0.5 ? -1 : 1) * rand(0.6, 1.3)];
   }
 
   function hangOffset(p) { return 0.03 - Math.max(fs[p].pose[15 * 3 + 1], fs[p].pose[19 * 3 + 1]); }
@@ -558,13 +608,13 @@
   // Hit: slide back a ring, away from the opponent; with no ring there (or
   // it is gone), slide off this one and hang from its edge.
   function knockBack(p) {
-    var f = fs[p], rel = [f.pos[0] - f.cx, f.pos[1] - f.cz];
+    var f = fs[p], pd = pads[f.pad], rel = [f.pos[0] - pd.cx, f.pos[1] - pd.cz];
     var awayOut = rel[0] * -f.fv[0] + rel[1] * -f.fv[1] >= 0 || f.ring === 0;
     var back = awayOut ? f.ring + 1 : f.ring - 1;
     var a = f.ring === 0 ? Math.atan2(-f.fv[1], -f.fv[0]) : f.ang;
-    if (back >= 0 && back < ringCount && ringUp(p, back)) {
+    if (back >= 0 && back < ringCount && ringUp(f.pad, back)) {
       setMode(p, "hit");
-      relocate(p, back, a, 0.45, 0.05);
+      relocate(p, f.pad, back, a, 0.45, 0.05);
     } else {
       slideOff(p, f.ring, awayOut ? ringRadii[f.ring][1] : ringRadii[f.ring][0], a);
     }
@@ -617,17 +667,18 @@
         // under it, it hauls itself up; without one, its grip goes. A round
         // ends when a side is cleared, so this is also what stops two last
         // fighters hanging opposite each other with nobody able to act.
-        if (ringUp(p, f.clingRing)) { f.willClimb = true; setMode(p, "climb"); }
+        if (ringUp(f.pad, f.clingRing)) { f.willClimb = true; setMode(p, "climb"); }
         else { setMode(p, "fall"); eliminated(p, 0.9); }   // owns no exchange to pass on
       }
     } else if (f.mode === "climb") {
       // Up and over the edge, onto the ring it was holding.
-      var c = Math.min(1, f.mt / 0.6), top = groundAt(p, ringMid(f.clingRing), Math.atan2(f.clingAt[1] - f.cz, f.clingAt[0] - f.cx));
+      var pc = pads[f.pad];
+      var c = Math.min(1, f.mt / 0.6), top = groundAt(p, ringMid(f.clingRing), Math.atan2(f.clingAt[1] - pc.cz, f.clingAt[0] - pc.cx));
       f.yOff = hangOffset(p) * (1 - ease(c)) + 0.25 * Math.sin(Math.PI * c);
       f.pos = [f.clingAt[0] + (top[0] - f.clingAt[0]) * ease(c), f.clingAt[1] + (top[1] - f.clingAt[1]) * ease(c)];
       if (c >= 1) {
         f.ring = f.clingRing;
-        f.ang = Math.atan2(f.clingAt[1] - f.cz, f.clingAt[0] - f.cx);
+        f.ang = Math.atan2(f.clingAt[1] - pc.cz, f.clingAt[0] - pc.cx);
         f.clingRing = -1;
         f.willClimb = false;
         setMode(p, "stand");
@@ -837,7 +888,7 @@
           after(rand(0.3, 0.5), function () { rally(q); });
           return;
         }
-        breakRing(q, k);
+        breakRing(fs[q].pad, k);
         var f = fs[q];
         if (((f.mode === "cling" || f.mode === "climb") && k === f.clingRing) ||
             (f.mode === "stand" && k === f.ring && !drop(q))) {
@@ -905,7 +956,8 @@
       var d = Math.random();
       var kind = d < 0.25 ? "sidestep" : d < 0.5 ? "flip" : d < 0.67 ? "duck" : d < 0.83 ? "sweep" : "split";
       var pass = kind === "duck" || kind === "sweep" ? 1.55 : kind === "split" ? 0.45 : rand(1.0, 1.6);
-      var glass = [fs[q].cx > 0 ? 15.8 : -15.8, pass, fs[q].cz + rand(-1.0, 1.0)];
+      var qp = pads[fs[q].pad];
+      var glass = [qp.cx > 0 ? 15.8 : -15.8, pass, qp.cz + rand(-1.0, 1.0)];
       var dur2 = rand(1.25, 1.4);
       var passAt = Math.abs(fs[q].pos[0] - from[0]) / Math.abs(glass[0] - from[0]);
       var lead = kind === "flip" ? 0.45 : kind === "sidestep" ? 0.4 : 0.45 * evadeTime[kind];
@@ -914,10 +966,10 @@
         var spot = dodgeSpot(q);
         if (kind === "flip") {
           startFlip(q);
-          if (spot) relocate(q, spot[0], spot[1], flipTime, 0);
+          if (spot) relocate(q, spot[0], spot[1], spot[2], flipTime, 0);
         } else if (kind === "sidestep") {
           play(q, "dodge", 1.3);
-          if (spot) relocate(q, spot[0], spot[1], 0.5, 0.2);
+          if (spot) relocate(q, spot[0], spot[1], spot[2], 0.5, 0.2);
         } else {
           fs[q].evade = kind;
           setMode(q, "evade");
@@ -1001,7 +1053,7 @@
     if (!fs[p].move && Math.random() < 0.3) {
       var spot = dodgeSpot(p);
       if (spot) {
-        relocate(p, spot[0], spot[1], 0.45, 0.3);
+        relocate(p, spot[0], spot[1], spot[2], 0.45, 0.3);
         after(0.5, function () { rally(p); });
         return;
       }
@@ -1047,10 +1099,11 @@
 
   // Everyone back on their platform, every ring up, and the next round on.
   function newRound() {
+    for (var g = 0; g < pads.length; g++) restoreRings(g);
     for (var i = 0; i < fs.length; i++) {
-      restoreRings(i);
       var f = fs[i];
-      f.ring = 0; f.ang = 0; f.pos = [f.cx, f.cz];
+      f.pad = f.home;
+      f.ring = 0; f.ang = 0; f.pos = [pads[f.home].cx, pads[f.home].cz];
       f.move = null; f.clingRing = -1; f.willClimb = false; f.foe = -1;
       f.blockTarget = 0; f.block = 0;
       setMode(i, "rez");
@@ -1081,7 +1134,8 @@
     }
     // Rings that have finished rising are simply up again, and one that has
     // been gone a while starts back on its own.
-    rings.forEach(function (rs) {
+    pads.forEach(function (pd) {
+      var rs = pd.rings;
       rs.forEach(function (r, k) {
         if (r.s === "rising" && wall - r.t > 0.9) rs[k] = { s: "up" };
         else if (r.s === "falling" && wall - r.t > ringBack) rs[k] = { s: "rising", t: wall };
@@ -1112,14 +1166,14 @@
     // Rings: project each edge circle once, then lay its segments.
     for (var ci = 0; ci < ringCircles.length; ci++) {
       var cc = ringCircles[ci], look = ringLook(cc[0], cc[1]), pts = [];
-      var cxw = fs[cc[0]].cx, czw = fs[cc[0]].cz;
+      var cxw = pads[cc[0]].cx, czw = pads[cc[0]].cz;
       if (look[1] <= 0.01) continue;
       for (var a = 0; a <= ringSegs; a++) {
         var ang = 2 * Math.PI * a / ringSegs;
         pts.push(project([cxw + Math.cos(ang) * cc[2], look[0], czw + Math.sin(ang) * cc[2]]));
       }
       var outer = cc[2] === ringRadii[cc[1]][1];
-      var col = fs[cc[0]].team === 0 ? program : sentinel;
+      var col = pads[cc[0]].team === 0 ? program : sentinel;
       for (var sg = 0; sg < ringSegs; sg++) {
         seg(1000 - (pts[sg][2] + pts[sg + 1][2]) * 10 - 1, pts[sg], pts[sg + 1],
             outer ? 2 : 1.2, col, look[1] * (outer ? 0.95 : 0.55));
