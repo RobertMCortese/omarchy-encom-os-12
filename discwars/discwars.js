@@ -1032,6 +1032,7 @@
         }
         breakRing(fs[q].pad, k);
         fs[p].stats.rings++;
+        emit("ring", { team: fs[q].team });
         var f = fs[q];
         if (((f.mode === "cling" || f.mode === "climb") && k === f.clingRing) ||
             (f.mode === "stand" && k === f.ring && !drop(q))) {
@@ -1049,7 +1050,9 @@
     });
     // Spark the ceiling as the disc caroms off it.
     after(releaseTime() + 0.47, function () {
-      if (ds[p].state === "flight") spark(ds[p].pos, "#ffffff");
+      if (ds[p].state !== "flight") return;
+      spark(ds[p].pos, "#ffffff");
+      emit("bounce", { team: fs[p].team });          // off the ceiling
     });
   }
 
@@ -1091,6 +1094,7 @@
           if (canAct(q) && Math.random() < 0.3) {
             shatter(q);
             spark(hitAt, "#ffffff");
+            emit("derez", { team: fs[q].team });
             setMode(q, "derez");
             if (!eliminated(q, 3.0, p)) after(rand(0.9, 1.3), function () { rally(p); });
             return;
@@ -1135,6 +1139,7 @@
       var mid2 = lerp3(from, glass, 0.5);
       fly(p, [from, [mid2[0], pass, mid2[2] + rand(-0.6, 0.6)], glass], dur2, function () {
         spark(glass, hot(p));
+        emit("bounce", { team: fs[p].team });        // off the glass
         flyHome(p, glass);
         after(rand(0.3, 0.5), function () { rally(q); });
       });

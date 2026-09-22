@@ -44,7 +44,7 @@
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
   function makeNoise() {
-    var n = Math.floor(ctx.sampleRate * 0.4);
+    var n = Math.floor(ctx.sampleRate * 2.0);   // long enough for a crash to ring out
     var buf = ctx.createBuffer(1, n, ctx.sampleRate);
     var d = buf.getChannelData(0);
     for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
@@ -82,6 +82,63 @@
     g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
     o.connect(g2); g2.connect(master);
     o.start(t); o.stop(t + 0.13);
+  }
+
+  // Three toms, tuned low to high, each falling a little as it goes. Which
+  // one a block or a bounce gets is picked at random, so a rally comes out
+  // as a fill rather than the same note over and over.
+  var TOMS = [[168, 96], [232, 134], [316, 188]];
+  function tom(t, which) {
+    var f = TOMS[which % TOMS.length];
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(f[0], t);
+    o.frequency.exponentialRampToValueAtTime(f[1], t + 0.2);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.42, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.42);
+  }
+
+  // A crash, for a ring going out from under somebody: wide, bright, and
+  // left to ring for a bar and a half.
+  function crash(t) {
+    var s = ctx.createBufferSource(), hp = ctx.createBiquadFilter(),
+        bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noise;
+    hp.type = "highpass"; hp.frequency.value = 3800;
+    bp.type = "bandpass"; bp.frequency.value = 7600; bp.Q.value = 0.55;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.40, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
+    s.connect(hp); hp.connect(bp); bp.connect(g); g.connect(master);
+    s.start(t); s.stop(t + 1.55);
+  }
+
+  // A ride, for a fighter broken up: tighter than the crash, and metallic
+  // rather than white -- a stack of squares at no sensible interval to each
+  // other, which is how a cymbal was got out of an analogue box and is still
+  // the cheapest way to make metal out of oscillators.
+  var RIDE = [1047, 1481, 1899, 2411, 2917, 3413];
+  function ride(t) {
+    var hp = ctx.createBiquadFilter(), g = ctx.createGain();
+    hp.type = "highpass"; hp.frequency.value = 5600;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.26, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+    hp.connect(g); g.connect(master);
+    for (var i = 0; i < RIDE.length; i++) {
+      var o = ctx.createOscillator();
+      o.type = "square";
+      o.frequency.value = RIDE[i];
+      o.connect(hp);
+      o.start(t); o.stop(t + 1.02);
+    }
+    var s = ctx.createBufferSource();          // a little air over the metal
+    s.buffer = noise;
+    s.connect(hp);
+    s.start(t); s.stop(t + 1.02);
   }
 
   // ── The runs ──────────────────────────────────────────────────────────
@@ -183,8 +240,23 @@
         var b = eighth / 2;
         if (b === 1 || b === 3) snare(stepTime);   // two and four
       }
-      // Anything the fight did since the last slot starts on this one.
-      while (pending.length && live.length < MAX_VOICES) run(stepTime, pending.shift());
+      // Anything the fight did since the last slot lands on this one. Runs
+      // are held to the voice count; the kit is cheap and always sounds, so
+      // a ring going out is never swallowed by a busy bar.
+      var fired = 0;
+      while (pending.length && fired++ < 8) {
+        var e = pending.shift();
+        if (e.kind === "throw" || e.kind === "block") {
+          if (live.length < MAX_VOICES) run(stepTime, e);
+          if (e.kind === "block") tom(stepTime, Math.floor(Math.random() * 3));
+        } else if (e.kind === "bounce") {
+          tom(stepTime, Math.floor(Math.random() * 3));
+        } else if (e.kind === "ring") {
+          crash(stepTime);
+        } else if (e.kind === "derez") {
+          ride(stepTime);
+        }
+      }
       if (pending.length > 24) pending.length = 0; // a pile-up is not music
       step++;
       stepTime += STEP;

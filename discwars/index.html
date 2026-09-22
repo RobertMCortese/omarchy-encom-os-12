@@ -278,9 +278,9 @@
 <script src="palette.js?v=e46f3c02"></script>
 <script src="vector.js?v=4ec43c23"></script>
 <script src="learn.js?v=d1de0737"></script>
-<script src="sound.js?v=b6355181"></script>
+<script src="sound.js?v=8b9251ca"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=e3db8ff5"></script>
+<script src="discwars.js?v=955b65b0"></script>
 <script>
 (function () {
   "use strict";
@@ -516,8 +516,9 @@
     soundBtn.hidden = true;
   } else {
     DiscWars.on(function (kind, info) {
-      if (kind === "throw" || kind === "block") DiscWarsSound.play(kind, info);
-      else DiscWarsSound.mark(kind);            // a fighter out, or a new round
+      // "out" and "round" shape the tempo; everything else is a sound.
+      if (kind === "out" || kind === "round") DiscWarsSound.mark(kind);
+      else DiscWarsSound.play(kind, info);
     });
     // The tempo rises with every fighter knocked out, so show where it is.
     setInterval(function () {
