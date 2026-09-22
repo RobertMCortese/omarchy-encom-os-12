@@ -132,6 +132,31 @@
     }
   }
 
+  // A browser will not resume an audio context in a background tab, and only
+  // resumes one at all off a real interaction. Rather than deciding after a
+  // fixed wait that it has refused -- resume is asynchronous, and that wait
+  // can easily be the shorter of the two -- keep asking: whenever the tab
+  // comes to the front, and on the next click anywhere. Once it takes, these
+  // do nothing.
+  function wake() {
+    if (!ctx || ctx.state === "running") return;
+    try {
+      var r = ctx.resume();
+      if (r && r.catch) r.catch(function () { /* still refused; we try again */ });
+    } catch (e) { /* same */ }
+  }
+
+  var watching = false;
+  function watchForPermission() {
+    if (watching) return;
+    watching = true;
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && running) wake();
+    });
+    window.addEventListener("pointerdown", function () { if (running) wake(); }, true);
+    window.addEventListener("keydown", function () { if (running) wake(); }, true);
+  }
+
   window.DiscWarsSound = {
     get on() { return running; },
     // Whether anything is actually coming out. A browser will not resume an
@@ -156,14 +181,12 @@
         master.connect(comp); comp.connect(ctx.destination);
         noise = makeNoise();
       }
-      if (ctx.state === "suspended") {
-        var r = ctx.resume();
-        if (r && r.catch) r.catch(function () { /* refused: `live` will say so */ });
-      }
+      wake();
       step = 0;
       stepTime = ctx.currentTime + 0.08;
       pending = []; live = [];
       running = true;
+      watchForPermission();
       if (timer) clearInterval(timer);
       timer = setInterval(schedule, TICK);
       schedule();

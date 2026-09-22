@@ -261,7 +261,7 @@
 
 <script src="palette.js?v=e46f3c02"></script>
 <script src="learn.js?v=d1de0737"></script>
-<script src="sound.js?v=98b32f01"></script>
+<script src="sound.js?v=1a17b29e"></script>
 <script src="poses.js?v=573e2db4"></script>
 <script src="discwars.js?v=4eb003fa"></script>
 <script>
@@ -326,6 +326,17 @@
 
   // The chrome steps back while you watch and comes up on any input.
   var hintLine = document.querySelector(".hint");
+  var HINT = hintLine ? hintLine.textContent : "";
+  var liveTimer = 0;
+  function watchLive(n) {
+    clearTimeout(liveTimer);
+    if (!window.DiscWarsSound || !DiscWarsSound.on) { hintLine.textContent = HINT; return; }
+    if (DiscWarsSound.live) { hintLine.textContent = HINT; return; }
+    if (n > 6) {
+      hintLine.textContent = "Waiting for this tab to be in front before it can play";
+    }
+    liveTimer = setTimeout(function () { watchLive(n + 1); }, 400);
+  }
   var restTimer = 0;
   function stir() {
     chrome.classList.remove("resting");
@@ -485,19 +496,16 @@
       if (DiscWarsSound.on) {
         DiscWarsSound.stop();
         soundBtn.setAttribute("aria-pressed", "false");
+        watchLive(0);
         return;
       }
       if (!DiscWarsSound.start()) { soundBtn.hidden = true; return; }   // no Web Audio here
       soundBtn.setAttribute("aria-pressed", "true");
-      // Resuming is asynchronous and can be refused. Come back and check
-      // rather than leaving the control lit over silence.
-      setTimeout(function () {
-        if (DiscWarsSound.on && !DiscWarsSound.live) {
-          DiscWarsSound.stop();
-          soundBtn.setAttribute("aria-pressed", "false");
-          hintLine.textContent = "Your browser would not start audio \u2014 try again with this tab in front";
-        }
-      }, 400);
+      // Sound stays on; what is in doubt is whether the browser has let the
+      // audio through yet. Watch for a couple of seconds and say so if it
+      // has not, then keep watching -- it starts by itself the moment the
+      // tab comes to the front.
+      watchLive(0);
     });
   }
 
