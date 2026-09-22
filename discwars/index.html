@@ -54,6 +54,14 @@
     box-shadow: 0 0 6px currentColor;
   }
   #board i.out { opacity: 0.16; box-shadow: none; }
+  /* The one that came through, and what it is carrying. */
+  #board .champ {
+    margin-top: 7px; font-size: 9px; letter-spacing: 0.26em;
+    color: var(--chrome-dim);
+  }
+  #board .champ b { font-weight: 600; letter-spacing: 0.3em; }
+  #board .champ b.a { color: var(--side-a); }
+  #board .champ b.b { color: var(--side-b); }
   #board .banner {
     margin-top: 12px; font-size: 13px; letter-spacing: 0.5em;
     color: var(--accent-hi);
@@ -63,7 +71,15 @@
   @media (max-width: 620px) {
     #board { font-size: 10px; letter-spacing: 0.18em; padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
     #board span.side { display: none; }
-    #board .banner { font-size: 11px; letter-spacing: 0.34em; }
+    /* The one that came through, and what it is carrying. */
+  #board .champ {
+    margin-top: 7px; font-size: 9px; letter-spacing: 0.26em;
+    color: var(--chrome-dim);
+  }
+  #board .champ b { font-weight: 600; letter-spacing: 0.3em; }
+  #board .champ b.a { color: var(--side-a); }
+  #board .champ b.b { color: var(--side-b); }
+  #board .banner { font-size: 11px; letter-spacing: 0.34em; }
   }
 
   /* Chrome rests over the scene and steps back while you watch. */
@@ -260,10 +276,11 @@
 </div>
 
 <script src="palette.js?v=e46f3c02"></script>
+<script src="vector.js?v=4ec43c23"></script>
 <script src="learn.js?v=d1de0737"></script>
-<script src="sound.js?v=179121cf"></script>
+<script src="sound.js?v=b1ae2cf9"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=0386fd7b"></script>
+<script src="discwars.js?v=7fea4fe4"></script>
 <script>
 (function () {
   "use strict";
@@ -428,7 +445,10 @@
     if (typeof DiscWars.state !== "function") return;
     var st = DiscWars.state();
     var flags = st.fighters.map(function (f) { return f.alive ? "1" : "0"; }).join("");
-    var key = st.score.join(":") + "|" + st.banner + "|" + flags;
+    var ch = null;
+    for (var i = 0; i < st.fighters.length; i++) if (st.fighters[i].champion) ch = st.fighters[i];
+    var key = st.score.join(":") + "|" + st.banner + "|" + flags +
+              "|" + (ch ? ch.name + ch.points + ch.stats.rounds : "");
     if (key === boardKey) return;
     boardKey = key;
 
@@ -442,6 +462,10 @@
       '<span class="side a">' + st.sides[0] + "</span>" + pips(0) +
       "<b>" + st.score[0] + " : " + st.score[1] + "</b>" +
       pips(1) + '<span class="side b">' + st.sides[1] + "</span>" +
+      (ch ? '<div class="champ">CHAMPION <b class="' + (ch.team === 0 ? "a" : "b") + '">' +
+            ch.name + "</b> \u00b7 " + ch.stats.rounds + (ch.stats.rounds === 1 ? " ROUND" : " ROUNDS") +
+            " \u00b7 " + ch.points + " PTS \u00b7 " + ch.stats.kills +
+            (ch.stats.kills === 1 ? " KILL" : " KILLS") + "</div>" : "") +
       (st.banner ? '<div class="banner">' + st.banner + "</div>" : "");
   }
   // ── What the sides have learned ───────────────────────────────────────

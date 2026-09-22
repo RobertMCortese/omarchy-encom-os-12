@@ -104,19 +104,35 @@
   }
 
   // Programs sit an octave above sentinels, so who is doing what is audible.
-  // Where a throw is aimed sets where its run starts, and a block answers by
-  // walking back down: the line follows the fight rather than decorating it.
-  var ROOT = 33;                                   // A1
-  var AIM_STEP = [7, 3, 0];                        // high, body, low
+  // Where a throw is aimed sets which degree its run starts on, and a block
+  // answers by walking back down: the line follows the fight rather than
+  // decorating it.
+  //
+  // D# natural minor, less its fifth: D# E# F# G# B C#. Runs step through
+  // these rather than through semitones, so a line stays in key however many
+  // of them are going at once -- which matters here, because in a 3v3 there
+  // are often three.
+  var ROOT = 27;                                   // D#1
+  var SCALE = [0, 2, 3, 5, 8, 10];                 // D# E# F# G# B C#
+  var AIM_STEP = [4, 2, 0];                        // high, body, low: which degree to start on
+
+  // Degree d of the scale, carrying on into the octave above as it runs out.
+  function degree(d) {
+    var n = SCALE.length;
+    var oct = Math.floor(d / n), i = d - oct * n;
+    if (i < 0) { i += n; oct -= 1; }
+    return SCALE[i] + 12 * oct;
+  }
 
   function run(t0, e) {
     var beats = e.kind === "block" ? 4 : 2;        // a measure, or half of one
     var n = beats * 2;                             // in eighths
-    var base = ROOT + (e.team === 0 ? 12 : 0) + (AIM_STEP[e.aim] || 0);
+    var base = ROOT + (e.team === 0 ? 12 : 0);
+    var from = AIM_STEP[e.aim] || 0;
     var dir = e.kind === "block" ? -1 : 1;         // blocks come back down
     var gain = e.kind === "block" ? 0.16 : 0.13;
     for (var i = 0; i < n; i++) {
-      pluck(t0 + i * STEP, base + dir * i, STEP * 0.85, e.kind, gain);
+      pluck(t0 + i * STEP, base + degree(from + dir * i), STEP * 0.85, e.kind, gain);
     }
     live.push(t0 + n * STEP);
   }

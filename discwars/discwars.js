@@ -172,6 +172,34 @@
 
   var BODY = "#03080b";              // the dark inside of a figure
 
+  // ── Names ─────────────────────────────────────────────────────────────
+  // Drawn from the stroke font in vector.js, in screen space at the point
+  // over the head, so a name is always square to the viewer however the
+  // camera has come round -- and sized off the same perspective divide as
+  // the head beneath it, so it shrinks with distance like everything else.
+  var Font = null;
+  function nameAt(text, cx, cy, cap, col, alpha, z) {
+    if (!Font) Font = window.DiscWarsFont || null;
+    if (!Font || !text || cap < 2.2) return;       // too far off to read anyway
+    var u = cap / Font.height;                     // glyph units to pixels
+    var x = cx - Font.width(text) * u / 2;
+    var w = Math.max(1, cap * 0.13);
+    for (var i = 0; i < text.length; i++) {
+      var g = Font.glyph(text.charAt(i));
+      if (g) {
+        for (var k = 0; k < g.length; k++) {
+          var st = g[k];
+          for (var j = 0; j + 1 < st.length; j++) {
+            seg(z, [x + st[j][0] * u, cy + st[j][1] * u],
+                   [x + st[j + 1][0] * u, cy + st[j + 1][1] * u],
+                w, col, alpha, "round");
+          }
+        }
+      }
+      x += Font.advance * u;
+    }
+  }
+
   function paint() {
     var items = pool.slice(0, dn);
     items.sort(function (a, b) { return a.z - b.z; });
@@ -265,6 +293,47 @@
     [12, 13, 0.08], [13, 14, 0.07], [14, 15, 0.06], [16, 17, 0.08], [17, 18, 0.07], [18, 19, 0.06]
   ];
 
+  // ── Who they are ──────────────────────────────────────────────────────
+  // Three pools, drawn from without repeating inside a match. Short enough
+  // to read over a head at the back of the arena.
+  var NAMES = [
+    // Unix commands
+    "GREP", "AWK", "SED", "CHMOD", "KILL", "PING", "CURL", "TAR", "CRON",
+    "SUDO", "MOUNT", "FSCK", "NICE", "TEE", "SORT", "UNIQ", "FIND", "MAKE",
+    "DIFF", "PATCH", "TRAP", "YES", "DMESG", "STTY", "NOHUP", "XARGS",
+    // Greek given names
+    "ALEXIOS", "NIKOS", "STAVROS", "KOSTAS", "THEO", "ARIS", "PETROS",
+    "SPIROS", "ELENI", "SOFIA", "DESPINA", "THALIA", "IOANNA", "ANDREAS",
+    "VASILIS", "MANOS", "PHAEDRA", "DAPHNE", "ZOE", "IRIS", "LYDIA",
+    "PHOEBE", "CALLISTA", "ORESTES", "AGATHA", "LEANDROS",
+    // Languages that are also words
+    "BASIC", "FORTRAN", "PASCAL", "LOGO", "FORTH", "SCHEME", "RUST", "SWIFT",
+    "JULIA", "ADA", "GO", "LISP", "PROLOG", "EIFFEL", "OBERON", "MODULA",
+    "ICON", "SNOBOL", "ELM", "NIM", "CRYSTAL", "RED", "FACTOR", "SELF",
+    "CLIPPER", "SIMULA"
+  ];
+
+  function freshName(taken) {
+    for (var tries = 0; tries < 200; tries++) {
+      var n = NAMES[Math.floor(Math.random() * NAMES.length)];
+      if (taken.indexOf(n) < 0) { taken.push(n); return n; }
+    }
+    return "PROC" + Math.floor(Math.random() * 90 + 10);
+  }
+
+  // What a fighter is worth at the end of a round. Taking somebody out is
+  // worth most; getting a disc past a guard is worth more than answering
+  // one, since the arena makes that harder.
+  var POINTS = { hits: 3, kills: 5, rings: 2, blocks: 1, dodges: 1 };
+  function tally(f) {
+    var t = f.stats;
+    return t.hits * POINTS.hits + t.kills * POINTS.kills + t.rings * POINTS.rings +
+           t.blocks * POINTS.blocks + t.dodges * POINTS.dodges;
+  }
+  function blankStats() {
+    return { throws: 0, hits: 0, blocks: 0, dodges: 0, kills: 0, rings: 0, rounds: 0 };
+  }
+
   function newFighter(team, home, fv) {
     var pd = pads[home];
     return { team: team, home: home, pad: home, foe: -1,
@@ -273,7 +342,8 @@
              speed: 1, from: null, blend: 1, block: 0, blockTarget: 0, pose: null,
              mode: "stand", mt: 0, yOff: 0, alpha: 1, flip: "side", flipSide: 1,
              high: false, grip: "right", evade: "duck",
-             lastAim: -1, lastGuard: -1, lastThrowAim: 1 };
+             lastAim: -1, lastGuard: -1, lastThrowAim: 1,
+             name: "", champion: false, stats: blankStats() };
   }
 
   // A platform and its four rings. A fighter starts on its own and can end
@@ -297,8 +367,11 @@
       }
     }
     // One fighter per platform to begin with, in the same order.
+    var taken = [];
     pads.forEach(function (pd, i) {
-      fs.push(newFighter(pd.team, i, [pd.team === 0 ? 1 : -1, 0]));
+      var f = newFighter(pd.team, i, [pd.team === 0 ? 1 : -1, 0]);
+      f.name = freshName(taken);
+      fs.push(f);
       ds.push({ state: "back", pos: [0, 0, 0], trail: [], flight: null });
     });
     // Every edge circle of every ring, as [platform, ring, radius].
@@ -900,6 +973,7 @@
     after(releaseTime(), function () {
       if (canAct(p)) {
         launch(handWorld(p));                 // a body shot picks its aim in here
+        fs[p].stats.throws++;
         emit("throw", { team: fs[p].team, aim: fs[p].lastThrowAim });
         return;
       }
@@ -957,6 +1031,7 @@
           return;
         }
         breakRing(fs[q].pad, k);
+        fs[p].stats.rings++;
         var f = fs[q];
         if (((f.mode === "cling" || f.mode === "climb") && k === f.clingRing) ||
             (f.mode === "stand" && k === f.ring && !drop(q))) {
@@ -964,7 +1039,7 @@
           setMode(q, "fall");
           // Taking a fighter out does not end the exchange unless it was the
           // last of its side; the thrower carries it on against whoever is left.
-          if (!eliminated(q, 2.4)) after(rand(0.7, 1.1), function () { rally(p); });
+          if (!eliminated(q, 2.4, p)) after(rand(0.7, 1.1), function () { rally(p); });
           return;
         }
         // Let a fighter who has just dropped hang there a moment.
@@ -996,6 +1071,7 @@
         after(Math.max(0, dur - 0.3), function () { raiseShield(q, false); });
         fly(p, [from, [mid[0], mid[1] + rand(0.1, 0.6), mid[2] + rand(-1.4, 1.4)], to], dur, function () {
           spark(to, hot(p));
+          fs[q].stats.blocks++;
           emit("block", { team: fs[q].team, aim: call.aim });
           lowerShield(q);
           flyHome(p, to);
@@ -1010,12 +1086,13 @@
         fly(p, [from, lerp3(from, hitAt, 0.5).map(function (v, i) { return i === 1 ? v + rand(0.1, 0.4) : v; }), hitAt],
             rand(0.85, 1.05), function () {
           spark(hitAt, hot(p));
+          fs[p].stats.hits++;
           flyHome(p, hitAt);
           if (canAct(q) && Math.random() < 0.3) {
             shatter(q);
             spark(hitAt, "#ffffff");
             setMode(q, "derez");
-            if (!eliminated(q, 3.0)) after(rand(0.9, 1.3), function () { rally(p); });
+            if (!eliminated(q, 3.0, p)) after(rand(0.9, 1.3), function () { rally(p); });
             return;
           }
           if (canAct(q)) knockBack(q);
@@ -1030,6 +1107,7 @@
       // a sweep kick under a high throw, a split jump over a low one -- and
       // where there is somewhere to go it may instead step or flip clear,
       // which is what carries a fighter onto a fallen teammate's rings.
+      if (!call.through) fs[q].stats.dodges++;   // ducked or jumped it clean
       var lateral = call.guard !== 1 && Math.random() < 0.45 && dodgeSpot(q);
       var kind = lateral ? (Math.random() < 0.5 ? "sidestep" : "flip")
                : call.guard === 0 ? (Math.random() < 0.5 ? "duck" : "sweep")
@@ -1168,7 +1246,8 @@
   // still has to play before the arena should be reset. True once that was
   // the last of its side: the round is over and the caller's exchange dies
   // with it, rather than being handed on.
-  function eliminated(p, settle) {
+  function eliminated(p, settle, by) {
+    if (by != null && by !== p && fs[by]) fs[by].stats.kills++;
     // Called once per fighter per round, so it is what the tempo counts.
     emit("out", { team: fs[p].team, left: liveCount(fs[p].team) });
     if (liveCount(fs[p].team) > 0) return false;   // its side fights on without it
@@ -1182,6 +1261,30 @@
   // Everyone back on their platform, every ring up, and the next round on.
   function newRound() {
     emit("round", {});                             // everything back to the top
+
+    // One fighter goes through to the next round, and only one: whoever is
+    // still standing with the most to show for it. Everybody else is a new
+    // program with a new name and nothing to their name yet, so a champion
+    // is the only thing in the arena that accumulates -- and the only one
+    // with anything to lose.
+    var champ = -1, best = -1;
+    for (var c = 0; c < fs.length; c++) {
+      if (!alive(c)) continue;
+      var pts = tally(fs[c]);
+      if (pts > best) { best = pts; champ = c; }
+    }
+    if (champ >= 0) fs[champ].stats.rounds++;
+
+    var taken = champ >= 0 ? [fs[champ].name] : [];
+    for (var n = 0; n < fs.length; n++) {
+      fs[n].champion = (n === champ);
+      if (n === champ) continue;
+      fs[n].name = freshName(taken);               // a new program on that platform
+      fs[n].stats = blankStats();
+      fs[n].foe = -1;
+      fs[n].lastAim = -1; fs[n].lastGuard = -1;
+    }
+
     for (var g = 0; g < pads.length; g++) restoreRings(g);
     for (var i = 0; i < fs.length; i++) {
       var f = fs[i];
@@ -1283,6 +1386,13 @@
       // The visor sits on whichever side the fighter faces, as seen on screen.
       var front = project(ahead(p, toWorld(p, local, 11), 0.3));
       hd.vx = front[0] > hc[0] ? hs * 0.45 : hs * 0.05;
+
+      // The name, over the head, with a mark on the one that came through
+      // the last round.
+      var label = f.champion ? "^" + f.name : f.name;
+      nameAt(label, hc[0], hc[1] - hs * 1.75, hs * 0.62,
+             f.champion ? (f.team === 0 ? programHi : sentinelHi) : col,
+             alpha * (f.champion ? 1 : 0.8), 1000 - hc[2] * 20 + 2);
     });
 
     // Discs and their trails.
@@ -1410,7 +1520,10 @@
         score: score.slice(),
         banner: banner,
         sides: SIDE_NAME.slice(),
-        fighters: fs.map(function (f, i) { return { team: f.team, alive: alive(i) }; }),
+        fighters: fs.map(function (f, i) {
+          return { team: f.team, alive: alive(i), name: f.name,
+                   champion: f.champion, points: tally(f), stats: f.stats };
+        }),
         // What the two policies have come to, for the readout. Null when
         // learn.js is not loaded and the fight is being played blind.
         learning: brains && brains.map(function (b) {
