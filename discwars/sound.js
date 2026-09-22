@@ -85,8 +85,11 @@
   }
 
   // Three toms, tuned low to high, each falling a little as it goes. Which
-  // one a block or a bounce gets is picked at random, so a rally comes out
-  // as a fill rather than the same note over and over.
+  // one a carom gets is not random: the fight says. The first thing a disc
+  // hits is the high tom, the second -- or a shield turning it away -- the
+  // middle one, and the last, including its arrival back in the hand, the
+  // low one. A throw off a wall, past its target, off the glass and home
+  // comes out as a descending fill that follows the disc.
   var TOMS = [[168, 96], [232, 134], [316, 188]];
   function tom(t, which) {
     var f = TOMS[which % TOMS.length];
@@ -342,9 +345,9 @@
         if (e.kind === "throw" || e.kind === "block") {
           if (e.kind === "throw") stepKey();       // a block stays in the key it answers
           if (live.length < MAX_VOICES) run(stepTime, e);
-          if (e.kind === "block") tom(stepTime, Math.floor(Math.random() * 3));
-        } else if (e.kind === "bounce") {
-          tom(stepTime, Math.floor(Math.random() * 3));
+          if (e.kind === "block") tom(stepTime, e.tom);
+        } else if (e.kind === "bounce" || e.kind === "home") {
+          tom(stepTime, e.tom);
         } else if (e.kind === "ring") {
           crash(stepTime);
         } else if (e.kind === "derez") {
@@ -449,7 +452,8 @@
       }
       pending.push({ kind: kind, team: (info && info.team) || 0,
                      aim: info && info.aim != null ? info.aim : 1,
-                     name: (info && info.name) || "" });   // whose figure to play
+                     name: (info && info.name) || "",
+                     tom: info && info.tom != null ? info.tom : 1 });   // which drum, and whose figure
     }
   };
 })();

@@ -814,6 +814,19 @@
   }
   function discHome(p) { return ds[p].state !== "flight"; }
 
+  // Which tom a carom gets. A disc falls through the kit as it travels: the
+  // first thing it hits is the high tom, the second -- or a shield turning
+  // it away -- the middle one, and everything after that, including its
+  // arrival back in the hand that threw it, the low one. So a throw that
+  // goes off a wall, past its target, off the glass and home comes out as a
+  // descending fill, and the ear can follow the disc without watching it.
+  var TOM_HI = 2, TOM_MID = 1, TOM_LOW = 0;
+  function bounced(p) {
+    var d = ds[p];
+    d.bounces = (d.bounces || 0) + 1;
+    return d.bounces === 1 ? TOM_HI : d.bounces === 2 ? TOM_MID : TOM_LOW;
+  }
+
   // The path of a throw, as control points for fly(). Straight at somebody
   // it is one arc; off a side wall it is two, out to the glass and back in
   // at an angle. Either wall serves -- the one across the arena, or the one
@@ -1151,11 +1164,12 @@
       var w = [turn[0], turn[1] + rand(0.3, 0.8), viaZ];
       pts = [from, lerp3(from, w, 0.5), w, lerp3(w, land, 0.5), home];
       after(rand(0.35, 0.5), function () {
-        if (ds[p].state === "flight") { spark(ds[p].pos, "#ffffff"); emit("bounce", { team: fs[p].team }); }
+        if (ds[p].state === "flight") { spark(ds[p].pos, "#ffffff"); emit("bounce", { team: fs[p].team, tom: bounced(p) }); }
       });
     }
     fly(p, pts, viaZ == null ? rand(0.8, 1.0) : rand(1.0, 1.25), function () {
       ds[p].state = "hand";
+      emit("home", { team: fs[p].team, tom: TOM_LOW });   // back in the hand: the low one
       after(0.3, function () { if (ds[p].state === "hand") ds[p].state = "back"; });
     });
   }
@@ -1164,6 +1178,7 @@
   var lastThrow = 0;
   function throwFrom(p, launch) {
     lastThrow = wall;
+    ds[p].bounces = 0;                             // a new journey through the kit
     play(p, "throw", throwSpeed);
     after(0.12, function () { ds[p].state = "hand"; });
     after(releaseTime(), function () {
@@ -1257,7 +1272,7 @@
     after(releaseTime() + 0.47, function () {
       if (ds[p].state !== "flight") return;
       spark(ds[p].pos, "#ffffff");
-      emit("bounce", { team: fs[p].team });          // off the ceiling
+      emit("bounce", { team: fs[p].team, tom: bounced(p) });          // off the ceiling
     });
   }
 
@@ -1274,7 +1289,7 @@
         after(releaseTime() + 0.42, function () {
           if (ds[p].state !== "flight") return;
           spark(ds[p].pos, "#ffffff");
-          emit("bounce", { team: fs[p].team });
+          emit("bounce", { team: fs[p].team, tom: bounced(p) });
         });
       }
       var canBlock = discHome(q) && canAct(q);
@@ -1290,7 +1305,7 @@
         fly(p, arc(from, to, rand(0.1, 0.6), viaZ), dur, function () {
           spark(to, hot(p));
           fs[q].stats.blocks++;
-          emit("block", { team: fs[q].team, aim: call.aim, name: fs[q].name });
+          emit("block", { team: fs[q].team, aim: call.aim, name: fs[q].name, tom: TOM_MID });
           lowerShield(q);
           flyHome(p, to, viaZ == null ? null : -viaZ);   // off the other wall on the way back
           after(rand(0.25, 0.45), function () { rally(q); });
@@ -1377,7 +1392,7 @@
       glass[1] = pass;                               // still passes where it was aimed
       fly(p, arc(from, glass, 0, viaZ), dur2, function () {
         spark(glass, hot(p));
-        emit("bounce", { team: fs[p].team });        // off the glass
+        emit("bounce", { team: fs[p].team, tom: bounced(p) });        // off the glass
         flyHome(p, glass, viaZ == null ? null : -viaZ);
         after(rand(0.3, 0.5), function () { rally(q); });
       });
