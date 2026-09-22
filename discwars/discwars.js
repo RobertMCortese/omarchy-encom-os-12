@@ -814,6 +814,25 @@
   }
   function discHome(p) { return ds[p].state !== "flight"; }
 
+  // The path of a throw, as control points for fly(). Straight at somebody
+  // it is one arc; off a side wall it is two, out to the glass and back in
+  // at an angle. Either wall serves -- the one across the arena, or the one
+  // between the fighters and whoever is watching, which is not drawn but is
+  // just as hard.
+  function arc(from, to, lift, viaZ) {
+    if (viaZ == null) {
+      var m = lerp3(from, to, 0.5);
+      return [from, [m[0], m[1] + lift, m[2] + rand(-0.6, 0.6)], to];
+    }
+    var turn = lerp3(from, to, 0.42);
+    var w = [turn[0], turn[1] + lift * 0.4, viaZ];
+    return [from, lerp3(from, w, 0.5), w, lerp3(w, to, 0.5), to];
+  }
+  // Which wall a throw might go off, or null for straight at them.
+  function pickWall() {
+    return (Math.random() < 0.5 ? -1 : 1) * (arenaZ - 0.35);
+  }
+
   // A flight: quadratic Beziers through control points; a point may be a
   // function, so a disc flying home follows its owner's moving hand.
   function fly(p, pts, dur, done) {
@@ -1117,13 +1136,28 @@
   function afterWall(delay, fn) { wallQueue.push({ at: wall + delay, fn: fn }); }
   function hot(p) { return fs[p].team === 0 ? programHi : sentinelHi; }
 
-  function flyHome(p, from) {
-    var mid = lerp3(from, handWorld(p), 0.5);
-    fly(p, [from, [mid[0], mid[1] + rand(0.4, 1.0), mid[2] + rand(-1.2, 1.2)], function () { return handWorld(p); }],
-        rand(0.8, 1.0), function () {
-          ds[p].state = "hand";
-          after(0.3, function () { if (ds[p].state === "hand") ds[p].state = "back"; });
-        });
+  // Back to the hand that threw it. A throw that went off a wall on the way
+  // out comes back off one too, which is what makes a wall shot read as a
+  // wall shot rather than a funny-looking straight one.
+  function flyHome(p, from, viaZ) {
+    var home = function () { return handWorld(p); };
+    var land = handWorld(p);
+    var pts;
+    if (viaZ == null) {
+      var mid = lerp3(from, land, 0.5);
+      pts = [from, [mid[0], mid[1] + rand(0.4, 1.0), mid[2] + rand(-1.2, 1.2)], home];
+    } else {
+      var turn = lerp3(from, land, 0.45);
+      var w = [turn[0], turn[1] + rand(0.3, 0.8), viaZ];
+      pts = [from, lerp3(from, w, 0.5), w, lerp3(w, land, 0.5), home];
+      after(rand(0.35, 0.5), function () {
+        if (ds[p].state === "flight") { spark(ds[p].pos, "#ffffff"); emit("bounce", { team: fs[p].team }); }
+      });
+    }
+    fly(p, pts, viaZ == null ? rand(0.8, 1.0) : rand(1.0, 1.25), function () {
+      ds[p].state = "hand";
+      after(0.3, function () { if (ds[p].state === "hand") ds[p].state = "back"; });
+    });
   }
 
   // Wind up and release; `launch` gets the release point.
@@ -1231,8 +1265,18 @@
   // answers with one of the three guards; if it picks the one that covers
   // that aim the disc comes off it, and if it picks wrong the disc goes
   // past -- and now and then finds its mark.
-  function bodyShot(p, q) {
+  function bodyShot(p, q, viaZ) {
+    // viaZ, when given, is the side wall this one goes off on its way over.
     throwFrom(p, function (from) {
+      if (viaZ != null) {
+        // Spark it off the glass as it turns, the way a banked shot sparks
+        // off the ceiling.
+        after(releaseTime() + 0.42, function () {
+          if (ds[p].state !== "flight") return;
+          spark(ds[p].pos, "#ffffff");
+          emit("bounce", { team: fs[p].team });
+        });
+      }
       var canBlock = discHome(q) && canAct(q);
       var call = readThrow(p, q, canBlock);
       var pass = HEIGHT[call.aim] + rand(-0.08, 0.08);
@@ -1241,14 +1285,14 @@
         // Caught on the disc, held up across the chest.
         var to = ahead(q, chestWorld(q), 0.6);
         to[1] += 0.05;
-        var dur = rand(0.85, 1.05), mid = lerp3(from, to, 0.5);
+        var dur = rand(0.85, 1.05) * (viaZ == null ? 1 : 1.3);
         after(Math.max(0, dur - 0.3), function () { raiseShield(q, false); });
-        fly(p, [from, [mid[0], mid[1] + rand(0.1, 0.6), mid[2] + rand(-1.4, 1.4)], to], dur, function () {
+        fly(p, arc(from, to, rand(0.1, 0.6), viaZ), dur, function () {
           spark(to, hot(p));
           fs[q].stats.blocks++;
           emit("block", { team: fs[q].team, aim: call.aim, name: fs[q].name });
           lowerShield(q);
-          flyHome(p, to);
+          flyHome(p, to, viaZ == null ? null : -viaZ);   // off the other wall on the way back
           after(rand(0.25, 0.45), function () { rally(q); });
         });
         return;
@@ -1280,8 +1324,8 @@
       if (call.through && Math.random() < CONNECT + edge(know && know.used, 0.18)) {
         // It found its mark: knocked back a ring and stunned, or derezzed.
         var hitAt = chestWorld(q);
-        fly(p, [from, lerp3(from, hitAt, 0.5).map(function (v, i) { return i === 1 ? v + rand(0.1, 0.4) : v; }), hitAt],
-            rand(0.85, 1.05), function () {
+        fly(p, arc(from, hitAt, rand(0.1, 0.4), viaZ),
+            rand(0.85, 1.05) * (viaZ == null ? 1 : 1.3), function () {
           spark(hitAt, hot(p));
           fs[p].stats.hits++;
           flyHome(p, hitAt);
@@ -1330,11 +1374,11 @@
           setMode(q, "evade");
         }
       });
-      var mid2 = lerp3(from, glass, 0.5);
-      fly(p, [from, [mid2[0], pass, mid2[2] + rand(-0.6, 0.6)], glass], dur2, function () {
+      glass[1] = pass;                               // still passes where it was aimed
+      fly(p, arc(from, glass, 0, viaZ), dur2, function () {
         spark(glass, hot(p));
         emit("bounce", { team: fs[p].team });        // off the glass
-        flyHome(p, glass);
+        flyHome(p, glass, viaZ == null ? null : -viaZ);
         after(rand(0.3, 0.5), function () { rally(q); });
       });
     });
@@ -1376,10 +1420,16 @@
   // and on the way out another attack from whoever it left standing. There
   // is one chain per fighter per side, so a 3v3 keeps three duels going.
   var chains = 0;
-  function startChain() {
-    var idle = [];
+  // Fighters on a side that could take an exchange this instant.
+  function ready(team) {
+    var out = [];
     for (var i = 0; i < fs.length; i++)
-      if (alive(i) && canAct(i) && discHome(i) && !fs[i].move) idle.push(i);
+      if (fs[i].team === team && alive(i) && canAct(i) && discHome(i) && !fs[i].move) out.push(i);
+    return out;
+  }
+
+  function startChain() {
+    var idle = ready(0).concat(ready(1));
     if (!idle.length) return false;
     chains++;
     rally(idle[Math.floor(Math.random() * idle.length)]);
@@ -1399,8 +1449,19 @@
     var q = pickFoe(p);
     if (q < 0) { chains = Math.max(0, chains - 1); return; }
     fs[p].foe = q;
-    if (!canAct(p)) { after(0.3, function () { rally(q); }); return; }
-    if (!discHome(p)) { after(0.2, function () { rally(p); }); return; }
+    if (!canAct(p) || !discHome(p)) {
+      // It cannot throw just now -- mid-flip, still waiting on its disc.
+      // Rather than making the exchange queue behind it, give it to somebody
+      // who can: its own side first, since the fight should keep swinging
+      // back and forth, then the other. Several exchanges at once only work
+      // if they are not all waiting on the same fighter.
+      var mine = ready(fs[p].team);
+      if (mine.length) { rally(mine[Math.floor(Math.random() * mine.length)]); return; }
+      var them = ready(1 - fs[p].team);
+      if (them.length) { rally(them[Math.floor(Math.random() * them.length)]); return; }
+      after(0.25, function () { rally(p); });
+      return;
+    }
     if (fs[q].mode === "climb" || (fs[q].mode === "cling" && fs[q].willClimb)) {
       afterWall(0.4, function () { rally(p); });                                // let it try
       return;
@@ -1422,7 +1483,8 @@
       bankShot(p, q, Math.random() < 0.55 ? fs[q].ring : up[Math.floor(Math.random() * up.length)]);
       return;
     }
-    bodyShot(p, q);
+    // Or off a side wall, coming in from an angle rather than straight on.
+    bodyShot(p, q, Math.random() < 0.22 ? pickWall() : null);
   }
 
   // ── Rounds ────────────────────────────────────────────────────────────
@@ -1545,7 +1607,14 @@
       lastChainCheck = wall;
       // As the round wears on there are fewer fighters to carry exchanges,
       // so ask for no more than the thinner side can still put up.
-      var want = Math.min(teamSize, liveCount(0), liveCount(1));
+      // How many exchanges should be going. Taking the thinner side was
+      // wrong: it meant three fighters facing one ran a single exchange
+      // between them and took turns, so a round went quiet exactly where it
+      // should be at its worst. What matters is how many can throw, which is
+      // the larger side -- three onto one is three discs in the air, and
+      // being outnumbered looks like it.
+      var a = liveCount(0), b = liveCount(1);
+      var want = (a > 0 && b > 0) ? Math.min(teamSize, Math.max(a, b)) : 0;
       // `chains` is a count of exchanges believed to be running, and a bug
       // that loses one without saying so leaves the arena quiet for good. If
       // nothing has been thrown for a while and both sides still have
