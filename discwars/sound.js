@@ -147,17 +147,30 @@
   // ── The runs ──────────────────────────────────────────────────────────
   // One plucked note: a saw through a filter that closes as it decays, which
   // is most of what makes a line like this sound the way it does.
+  // Attack, body, release. What was here before was an attack straight into
+  // a decay, with the filter closing over the same span, so every note was a
+  // pluck however long it was told to last -- a long note was only a longer
+  // beep. A note now holds near its peak for the middle of its length before
+  // it lets go, and the filter stays open across that body instead of shutting
+  // the moment it is struck. A short note still falls away like a stab,
+  // because with little length there is little body to hold.
   function pluck(t, midi, dur, kind, gain) {
     var f0 = mtof(midi);
     var o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
     o.type = kind === "block" ? "square" : "sawtooth";
     o.frequency.value = f0;
+    var atk = 0.006;
+    var rel = Math.min(0.3, dur * 0.35);
+    var body = Math.max(0.004, dur - atk - rel);
+    var sus = dur > 0.3 ? 0.8 : 0.4;               // a held note keeps its level; a stab does not
     lp.type = "lowpass";
     lp.Q.value = 9;
     lp.frequency.setValueAtTime(Math.min(f0 * 7, 9000), t);
-    lp.frequency.exponentialRampToValueAtTime(Math.max(f0 * 1.4, 120), t + dur * 0.9);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(f0 * 2.4, 170), t + atk + body);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(f0 * 1.3, 110), t + dur);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(gain, t + atk);
+    g.gain.exponentialRampToValueAtTime(gain * sus, t + atk + body);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(lp); lp.connect(g); g.connect(master);
     o.start(t); o.stop(t + dur + 0.02);
@@ -270,8 +283,14 @@
     [4, 4, 2, 0],
     [0, 2, 0, 4]                                  // root, third, root, fifth
   ];
-  var GAPS = [1, 2, 1, 1, 3, 2, 1, 2];             // sixteenths from one onset to the next
-  var HOLDS = [0.55, 1.35, 0.8, 0.5, 1.7, 0.9];    // how long each note rings, in sixteenths
+  // Onsets were averaging 1.63 sixteenths apart, which is about eleven notes
+  // to the bar before a second fighter is even counted, and each note rang
+  // for 0.59 of the space before the next -- so there was a silence between
+  // every pair of them and nothing ever overlapped. Twice the room now, and
+  // the notes that matter ring into the ones that follow.
+  var GAPS = [2, 4, 3, 4, 2, 6, 3, 4];             // sixteenths from one onset to the next
+  var HOLDS = [0.7, 1.1, 0.8, 1.3];                // a passing tone: struck and gone
+  var SUSTAIN = [3, 5, 4, 7, 6, 4];                // an anchor: rings on over what follows
   var OCTS = [0, 0, 0, 0, 7, 0];                   // every nth note up an octave, 0 for never
   var figures = {};
 
@@ -288,6 +307,7 @@
     for (var m = 0; m < 3; m++) gaps.push(GAPS[(h >>> (2 + m * 5)) % GAPS.length]);
     for (var q = 0; q < 3; q++) holds.push(HOLDS[(h >>> (7 + q * 4)) % HOLDS.length]);
     var f = { n: LENGTHS[h % LENGTHS.length], cell: cell, gaps: gaps, holds: holds,
+              sus: SUSTAIN[(h >>> 21) % SUSTAIN.length],
               oct: OCTS[(h >>> 17) % OCTS.length] };
     figures[key] = f;
     return f;
@@ -306,14 +326,21 @@
     var off = foldShift(base + degree(low), e.team);
     for (var i = 0; i < fig.n; i++) {
       if (i === 3) t += six * 2;                   // three, a breath, then the rest
+      var deg = fig.cell[(i + rot) % fig.cell.length];
       var gap = fig.gaps[i % fig.gaps.length];
-      var hold = fig.holds[i % fig.holds.length];
+      // The root and the fifth are what the figure is built on, so they are
+      // what rings -- held over the notes that follow them. The degrees
+      // between are passing and stay short. Every note being the same length
+      // is most of what made these read as a machine rather than a part.
+      var anchor = (deg === 0 || deg === 4);
+      var hold = anchor ? Math.min(fig.sus, gap + 3) : fig.holds[i % fig.holds.length];
       // A note that has had room before it lands harder, which is what puts
       // the emphasis somewhere different each time round rather than on the
-      // beat every time.
-      var hit = gain * (gap >= 2 ? 1.18 : 0.88);
+      // beat every time. A held note comes in softer, because it is going to
+      // be there a while and there may be two more over the top of it.
+      var hit = gain * (gap >= 3 ? 1.18 : 0.88) * (anchor ? 0.78 : 1);
       var up = (fig.oct && (i + 1) % fig.oct === 0) ? 12 : 0;
-      var d = fig.cell[(i + rot) % fig.cell.length] + lift + trans;
+      var d = deg + lift + trans;
       pluck(t, base + degree(d) + off + up, six * hold, e.kind, hit);
       t += six * gap;
     }
