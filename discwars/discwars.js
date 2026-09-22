@@ -346,7 +346,7 @@
              name: "", champion: false, stats: blankStats(),
              // What has worked: pairs of throws that ended with a kill, and
              // the second half of one part-way through being played again.
-             combos: [], plan: null, prevAim: -1 };
+             combos: [], plan: null, prevAim: -1, practised: null };
   }
 
   // A platform and its four rings. A fighter starts on its own and can end
@@ -932,6 +932,23 @@
   var COMBO_MAX = 6;                 // pairs kept; the least used goes first
   var COMBO_USE = 0.5;               // how often it reaches for one it has
 
+  // Knowing which move to make is not the same as being good at it. A pair
+  // that has come off before comes off more easily the next time: the throw
+  // it calls for lands more often, and a finish it has done before is thrown
+  // without hesitating, which leaves less of a window to climb out of. The
+  // gain flattens off, so the tenth repetition is worth much less than the
+  // second and nobody becomes untouchable.
+  function edge(used, cap) {
+    if (!used || used < 1) return 0;
+    return cap * (1 - 1 / (1 + (used - 1) * 0.55));
+  }
+  function practisedAt(f, trig) {
+    var best = null;
+    for (var i = 0; i < f.combos.length; i++)
+      if (f.combos[i].trig === trig && (!best || f.combos[i].used > best.used)) best = f.combos[i];
+    return best;
+  }
+
   // A kill teaches two things, and the more useful of them is the defensive
   // one. "I ducked, and then I killed with a low throw" is a counter: it is
   // keyed on a situation, so it comes back out when that situation does. "I
@@ -939,7 +956,7 @@
   // follow-up, which has to be started on purpose. Both are kept; the
   // counter is reached for first.
   function learnPair(f, trig, from, b) {
-    if (from < 0 || b < 0) return;
+    if (trig !== "finish" && (from < 0 || b < 0)) return;
     for (var i = 0; i < f.combos.length; i++) {
       if (f.combos[i].trig === trig && f.combos[i].from === from && f.combos[i].b === b) {
         f.combos[i].used++;                        // seen it work again
@@ -964,8 +981,10 @@
   // The aim a pair calls for, or -1 to let the policy choose.
   function comboAim(att, def) {
     var f = fs[att];
+    f.practised = null;
     if (f.plan && f.plan.foe === def) {            // finish what was started
       var b = f.plan.b;
+      f.practised = f.plan.of || null;
       f.plan = null;
       return b;
     }
@@ -979,7 +998,7 @@
         if (f.combos[i].trig === "guard" && f.combos[i].from === f.lastGuard) hits.push(f.combos[i]);
       if (hits.length && Math.random() < COMBO_USE) {
         var c = hits[Math.floor(Math.random() * hits.length)];
-        c.used++;
+        f.practised = c;                           // this throw is one it knows
         return c.b;
       }
     }
@@ -991,7 +1010,8 @@
       if (f.combos[k].trig === "aim") press.push(f.combos[k]);
     if (press.length && Math.random() < COMBO_USE * 0.5) {
       var q = press[Math.floor(Math.random() * press.length)];
-      f.plan = { foe: def, b: q.b };
+      f.plan = { foe: def, b: q.b, of: q };
+      f.practised = q;
       return q.from;
     }
     return -1;
@@ -1137,14 +1157,19 @@
   // Bank a throw off the ceiling onto one of the opponent's rings, often
   // the one it stands on. A defender with its disc at home may catch it
   // overhead instead; a clinging one cannot.
-  function bankShot(p, q, k) {
+  function bankShot(p, q, k, finishing) {
     fs[p].lastThrowAim = 0;                   // off the ceiling: the high register
+    // Taking the ring out from under somebody already hanging is its own
+    // move, and one that can be got good at: a fighter that has done it
+    // before throws without hesitating, and the disc is on its way while the
+    // other is still deciding whether it can climb out.
+    var skill = finishing ? practisedAt(fs[p], "finish") : null;
     throwFrom(p, function (from) {
       var caught = fs[q].mode === "stand" && canAct(q) && discHome(q) && Math.random() < 0.4;
       var over = ahead(q, chestWorld(q), 0.15);
       var to = caught ? [over[0], 2.3, over[2]] : ringPoint(q, k);
       var top = [lerp3(from, to, 0.55)[0], ceilY, rand(-1.2, 1.2)];
-      var dur = rand(1.15, 1.35);
+      var dur = rand(1.15, 1.35) * (1 - edge(skill && skill.used, 0.35));
       if (caught) after(dur - 0.35, function () { if (!raiseShield(q, true)) caught = false; });
       fly(p, [from, lerp3(from, top, 0.5).map(function (v, i) { return i === 1 ? v + 0.6 : v; }), top,
               lerp3(top, to, 0.5), to], dur, function () {
@@ -1162,6 +1187,7 @@
         if (((f.mode === "cling" || f.mode === "climb") && k === f.clingRing) ||
             (f.mode === "stand" && k === f.ring && !drop(q))) {
           // Nothing left to hold on to.
+          if (finishing) learnPair(fs[p], "finish", 0, 0);   // it knows how to do that now
           setMode(q, "fall");
           // Taking a fighter out does not end the exchange unless it was the
           // last of its side; the thrower carries it on against whoever is left.
@@ -1208,7 +1234,11 @@
         return;
       }
 
-      if (call.through && Math.random() < CONNECT) {
+      // A throw it has made before finds its mark more often than one it is
+      // trying for the first time. This is where memory stops being a
+      // preference and starts being an advantage.
+      var know = fs[p].practised;
+      if (call.through && Math.random() < CONNECT + edge(know && know.used, 0.18)) {
         // It found its mark: knocked back a ring and stunned, or derezzed.
         var hitAt = chestWorld(q);
         fly(p, [from, lerp3(from, hitAt, 0.5).map(function (v, i) { return i === 1 ? v + rand(0.1, 0.4) : v; }), hitAt],
@@ -1336,7 +1366,7 @@
       afterWall(0.4, function () { rally(p); });                                // let it try
       return;
     }
-    if (fs[q].mode === "cling") { bankShot(p, q, fs[q].clingRing); return; }     // finish it
+    if (fs[q].mode === "cling") { bankShot(p, q, fs[q].clingRing, true); return; }  // finish it
     // Now and then, move to another ring before throwing.
     if (!fs[p].move && Math.random() < 0.3) {
       var spot = dodgeSpot(p);
