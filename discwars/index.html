@@ -70,6 +70,7 @@
   #board .palette i { font-style: normal; opacity: 0.45; margin: 0 5px; }
   #board .palette b { font-weight: 400; }
   #board .palette b.counter { color: var(--accent-hi); opacity: 0.95; }
+  #board .palette b.guarded { color: var(--chrome); opacity: 0.95; }
   #board .palette b.press { opacity: 0.7; }
   #board .banner {
     margin-top: 12px; font-size: 13px; letter-spacing: 0.5em;
@@ -96,6 +97,7 @@
   #board .palette i { font-style: normal; opacity: 0.45; margin: 0 5px; }
   #board .palette b { font-weight: 400; }
   #board .palette b.counter { color: var(--accent-hi); opacity: 0.95; }
+  #board .palette b.guarded { color: var(--chrome); opacity: 0.95; }
   #board .palette b.press { opacity: 0.7; }
   #board .banner { font-size: 11px; letter-spacing: 0.34em; }
   }
@@ -298,7 +300,7 @@
 <script src="learn.js?v=d1de0737"></script>
 <script src="sound.js?v=bc732324"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=54e5e132"></script>
+<script src="discwars.js?v=b848cfd5"></script>
 <script>
 (function () {
   "use strict";
@@ -489,8 +491,16 @@
               ? '<div class="palette">' + ch.combos.map(function (c) {
                   // A counter answers a guard it has just had to use; a press
                   // is an opening it starts itself.
-                  var mark = c.trig === "guard" ? "\u21b5\u2009" : "";
-                  return '<b class="' + (c.trig === "guard" ? "counter" : "press") + '">' +
+                  // What kind of move it is, at a glance: an answer, a
+                  // finish, or something defensive.
+                  var MARK = { guard: "\u21b5\u2009", finish: "\u21af\u2009",
+                               save: "\u25c7\u2009", catch: "\u25c7\u2009",
+                               climb: "\u21a5\u2009" };
+                  var mark = MARK[c.trig] || "";
+                  var cls = c.trig === "press" || c.trig === "aim" ? "press"
+                          : (c.trig === "save" || c.trig === "catch" || c.trig === "climb")
+                            ? "guarded" : "counter";
+                  return '<b class="' + cls + '">' +
                          mark + c.name + (c.used > 1 ? " \u00d7" + c.used : "") + "</b>";
                 }).join("<i>\u00b7</i>") + "</div>"
               : "") : "") +

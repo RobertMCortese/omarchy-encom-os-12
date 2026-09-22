@@ -687,7 +687,7 @@
     var f = fs[p];
     f.move = null;
     f.clingRing = k;
-    f.willClimb = Math.random() < 0.33;
+    f.willClimb = Math.random() < climbChance(p);
     f.dropFrom = f.pos.slice();
     f.clingAt = groundAt(p, r, a);
     setMode(p, "drop");
@@ -717,7 +717,7 @@
     if (near === null) { setMode(p, "fall"); return false; }
     var edge = near < f.ring ? ringRadii[near][1] : ringRadii[near][0];
     f.clingRing = near;
-    f.willClimb = Math.random() < 0.33;                  // one in three pulls itself back up
+    f.willClimb = Math.random() < climbChance(p);        // and better at it with practice
     f.dropFrom = f.pos.slice();
     f.clingAt = groundAt(p, edge, f.ring === 0 ? rand(0.5, 2.6) : f.ang);
     setMode(p, "drop");
@@ -765,6 +765,7 @@
       f.yOff = hangOffset(p) * (1 - ease(c)) + 0.25 * Math.sin(Math.PI * c);
       f.pos = [f.clingAt[0] + (top[0] - f.clingAt[0]) * ease(c), f.clingAt[1] + (top[1] - f.clingAt[1]) * ease(c)];
       if (c >= 1) {
+        learnPair(f, "climb", 0, 0);               // it has got back up before
         f.ring = f.clingRing;
         f.ang = Math.atan2(f.clingAt[1] - pc.cz, f.clingAt[0] - pc.cx);
         f.clingRing = -1;
@@ -929,7 +930,7 @@
     return "UNNAMED";
   }
 
-  var COMBO_MAX = 6;                 // pairs kept; the least used goes first
+  var COMBO_MAX = 9;                 // moves kept; the least used goes first
   var COMBO_USE = 0.5;               // how often it reaches for one it has
 
   // Knowing which move to make is not the same as being good at it. A pair
@@ -948,6 +949,21 @@
       if (f.combos[i].trig === trig && (!best || f.combos[i].used > best.used)) best = f.combos[i];
     return best;
   }
+  // The same, but only entries answering a particular thing -- the aim a
+  // save was made against, say.
+  function practisedFor(f, trig, from) {
+    var best = null;
+    for (var i = 0; i < f.combos.length; i++)
+      if (f.combos[i].trig === trig && f.combos[i].from === from &&
+          (!best || f.combos[i].used > best.used)) best = f.combos[i];
+    return best;
+  }
+  // How likely a fighter is to haul itself back over the edge. A third of
+  // the time to begin with, and better the more often it has managed it.
+  function climbChance(p) {
+    var k = practisedAt(fs[p], "climb");
+    return 0.33 + edge(k && k.used, 0.30);
+  }
 
   // A kill teaches two things, and the more useful of them is the defensive
   // one. "I ducked, and then I killed with a low throw" is a counter: it is
@@ -956,7 +972,8 @@
   // follow-up, which has to be started on purpose. Both are kept; the
   // counter is reached for first.
   function learnPair(f, trig, from, b) {
-    if (trig !== "finish" && (from < 0 || b < 0)) return;
+    if (trig !== "finish" && trig !== "climb" && trig !== "catch" &&
+        (from < 0 || b < 0)) return;
     for (var i = 0; i < f.combos.length; i++) {
       if (f.combos[i].trig === trig && f.combos[i].from === from && f.combos[i].b === b) {
         f.combos[i].used++;                        // seen it work again
@@ -1165,7 +1182,9 @@
     // other is still deciding whether it can climb out.
     var skill = finishing ? practisedAt(fs[p], "finish") : null;
     throwFrom(p, function (from) {
-      var caught = fs[q].mode === "stand" && canAct(q) && discHome(q) && Math.random() < 0.4;
+      var grab = practisedAt(fs[q], "catch");
+      var caught = fs[q].mode === "stand" && canAct(q) && discHome(q) &&
+                   Math.random() < 0.4 + edge(grab && grab.used, 0.25);
       var over = ahead(q, chestWorld(q), 0.15);
       var to = caught ? [over[0], 2.3, over[2]] : ringPoint(q, k);
       var top = [lerp3(from, to, 0.55)[0], ceilY, rand(-1.2, 1.2)];
@@ -1176,6 +1195,7 @@
         spark(to, hot(p));
         flyHome(p, to);
         if (caught) {
+          learnPair(fs[q], "catch", 0, 0);         // it has taken one out of the air before
           lowerShield(q);
           after(rand(0.3, 0.5), function () { rally(q); });
           return;
@@ -1237,6 +1257,25 @@
       // A throw it has made before finds its mark more often than one it is
       // trying for the first time. This is where memory stops being a
       // preference and starts being an advantage.
+      // A defender that has answered this aim before can still get a piece of
+      // one its guard did not cover -- the save that a fighter who has been
+      // here before makes and a new program does not. This is the defensive
+      // half of the same idea: practice changes what happens, not just what
+      // is chosen.
+      if (call.through) {
+        var hand = practisedFor(fs[q], "save", call.aim);
+        if (hand && canAct(q) && Math.random() < edge(hand.used, 0.22)) {
+          call.through = false;                    // saved it after all
+          call.guard = call.aim;                   // shown as the guard that answers
+          hand.used++;
+          fs[q].stats.blocks++;
+        }
+      }
+      // A clean answer is worth remembering, now and then, so that a fighter
+      // builds up the aims it is hard to get past. Only occasionally, or a
+      // palette would be nothing but these.
+      if (!call.through && Math.random() < 0.15) learnPair(fs[q], "save", call.aim, call.guard);
+
       var know = fs[p].practised;
       if (call.through && Math.random() < CONNECT + edge(know && know.used, 0.18)) {
         // It found its mark: knocked back a ring and stunned, or derezzed.
