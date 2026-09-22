@@ -38,10 +38,6 @@
   // seconds and a fighter throws oftener than that, so the same program was
   // laying figures over its own.
   var voiceUntil = [0, 0];
-  // Who speaks for the sentinels, what their last throw was aimed at, and
-  // whether there is still a round on. The bassline runs off these rather
-  // than off a throw, so it keeps going while they are only defending.
-  var bassName = "", bassAim = 1, fighting = false;
 
   var ctx = null, master = null, notes = null, comp = null, noise = null;
   var sounding = [];               // every melodic voice currently ringing
@@ -480,17 +476,6 @@
     // Placed by its lowest note, so nothing in the figure drops out of hearing.
     var low = Math.min.apply(null, fig.cell) + lift + trans;
     var off = foldShift(base + degree(low), e.team);
-    // A bassline has to come round WITH the drums. Its gaps do not divide
-    // into a bar, so left alone the loop would walk away from the kick a
-    // little further every time round. It is given whole half bars -- and
-    // what is left over is held by the last note rather than left as rest,
-    // because a floor with holes in it is not one.
-    var endSix = 0;
-    if (fig.bass) {
-      var spanSix = 2;                             // the breath after the third note
-      for (var j = 0; j < fig.n; j++) spanSix += fig.gaps[j % fig.gaps.length];
-      endSix = Math.ceil(spanSix / 8) * 8;
-    }
     for (var i = 0; i < fig.n; i++) {
       if (i === 3) t += six * 2;                   // three, a breath, then the rest
       var deg = fig.cell[(i + rot) % fig.cell.length];
@@ -505,11 +490,7 @@
       // other down there is mud rather than harmony, so a bass note lasts
       // exactly up to the next one: joined up, never stacked. Its lengths
       // still vary, because the gaps do.
-      if (fig.bass) {
-        hold = gap * 0.98;
-        // The last note holds out to the half bar, so the loop is seamless.
-        if (i === fig.n - 1) hold = Math.max(hold, endSix - (t - t0) / six);
-      }
+      if (fig.bass) hold = gap * 0.98;
       // A note that has had room before it lands harder, which is what puts
       // the emphasis somewhere different each time round rather than on the
       // beat every time. A held note comes in softer, because it is going to
@@ -520,7 +501,7 @@
       pluck(t, base + degree(d) + off + up, six * hold, e.kind, hit, fig.voice);
       t += six * gap;
     }
-    voiceUntil[e.team] = fig.bass ? t0 + endSix * six : t;
+    voiceUntil[e.team] = t;          // this side has a line until here
   }
 
   // ── Hanging on ────────────────────────────────────────────────────────
@@ -589,8 +570,7 @@
           // others do still lands on the kit -- the drums are the arena, not
           // anybody's part -- so a fight with six in it still sounds like a
           // fight with six in it, while only two of them carry a line.
-          if (e.lead && e.team === 1) bassAim = e.aim;   // steers the loop, does not start it
-          if (e.lead && e.team === 0 && stepTime >= voiceUntil[e.team]) {
+          if (e.lead && stepTime >= voiceUntil[e.team]) {
             if (e.kind === "throw") stepKey();     // a block stays in the key it answers
             run(stepTime, e);
           }
@@ -602,15 +582,6 @@
         } else if (e.kind === "derez") {
           ride(stepTime);
         }
-      }
-      // The bassline never stops while there is a round on: the moment the
-      // sentinels' figure runs out it goes round again. It is the floor the
-      // rest of it stands on, and a floor with holes in it is not one.
-      // On a beat, always. The loop's period is a whole number of half bars,
-      // so it keeps whatever footing it started on -- start it off the beat
-      // once and it stays off the beat for the rest of the round.
-      if (fighting && bassName && onBeat && stepTime >= voiceUntil[1]) {
-        run(stepTime, { kind: "throw", team: 1, aim: bassAim, name: bassName, lead: true });
       }
       if (pending.length > 24) pending.length = 0; // a pile-up is not music
       step++;
@@ -679,7 +650,6 @@
       STEP = 60 / bpm / 2;
       stepTime = ctx.currentTime + 0.08;
       pending = []; voiceUntil = [0, 0]; hanging = {}; hangN = 0;
-      bassName = ""; bassAim = 1; fighting = true;   // the first round counts too
       trans = 0; transStep = 0;
       running = true;
       watchForPermission();
@@ -706,11 +676,7 @@
     // Called by the fight. Held until the next slot on the grid.
     play: function (kind, info) {
       if (!running || !ctx) return;
-      if (kind === "over") { fighting = false; cutAll(); return; }  // the last of a side is down
-      if (kind === "lead") {                       // this side's voice has changed hands
-        if (info.team === 1) bassName = info.name || "";
-        return;
-      }
+      if (kind === "over") { cutAll(); return; }   // the last of a side is down
       if (kind === "hang") {
         if (!info.lead) return;                    // only a side's own voice is heard hanging
         hanging[info.name] = { name: info.name, team: info.team };
@@ -719,7 +685,6 @@
       if (kind === "unhang") { delete hanging[info.name]; return; }
       if (kind === "round") {                       // nobody hanging, back to the root
         hanging = {}; trans = 0; transStep = 0;
-        bassName = ""; bassAim = 1; fighting = true;
         return;
       }
       pending.push({ kind: kind, team: (info && info.team) || 0,
