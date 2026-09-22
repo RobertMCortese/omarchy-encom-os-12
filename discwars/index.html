@@ -300,7 +300,7 @@
 <script src="learn.js?v=d1de0737"></script>
 <script src="sound.js?v=c2aa4ac4"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=c02b5ae2"></script>
+<script src="discwars.js?v=1ba0659f"></script>
 <script>
 (function () {
   "use strict";
@@ -468,7 +468,7 @@
     var ch = null;
     for (var i = 0; i < st.fighters.length; i++) if (st.fighters[i].champion) ch = st.fighters[i];
     var key = st.score.join(":") + "|" + st.banner + "|" + flags +
-              "|" + (ch ? ch.name + ch.points + ch.stats.rounds +
+              "|" + (ch ? ch.name + ch.points + ch.stats.rounds + (ch.rank || "") +
                           (ch.combos || []).map(function (c) { return c.name + c.used; }).join() : "");
     if (key === boardKey) return;
     boardKey = key;
@@ -483,8 +483,9 @@
       '<span class="side a">' + st.sides[0] + "</span>" + pips(0) +
       "<b>" + st.score[0] + " : " + st.score[1] + "</b>" +
       pips(1) + '<span class="side b">' + st.sides[1] + "</span>" +
-      (ch ? '<div class="champ">CHAMPION <b class="' + (ch.team === 0 ? "a" : "b") + '">' +
-            ch.name + "</b> \u00b7 " + ch.stats.rounds + (ch.stats.rounds === 1 ? " ROUND" : " ROUNDS") +
+      (ch ? '<div class="champ">' + (ch.rank || "CHAMPION") + ' <b class="' + (ch.team === 0 ? "a" : "b") + '">' +
+            ch.name + "</b> \u00b7 " + ch.stats.rounds +
+            (ch.stats.rounds === 1 ? " ROUND HELD" : " ROUNDS HELD") +
             " \u00b7 " + ch.points + " PTS \u00b7 " + ch.stats.kills +
             (ch.stats.kills === 1 ? " KILL" : " KILLS") + "</div>" +
             (ch.combos && ch.combos.length

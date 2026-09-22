@@ -177,6 +177,70 @@
   // over the head, so a name is always square to the viewer however the
   // camera has come round -- and sized off the same perspective divide as
   // the head beneath it, so it shrinks with distance like everything else.
+  // ── Rank ──────────────────────────────────────────────────────────────
+  // A champion wears what it has held, and it climbs the way enlisted
+  // insignia climbs: chevrons first, then rockers under them, then a device
+  // in the middle once there is nowhere left to go. One round is a single
+  // chevron; nine or more is three chevrons, three rockers and a star.
+  var RANKS = [
+    null,
+    { c: 1, r: 0, name: "PRIVATE" },
+    { c: 1, r: 1, name: "PRIVATE FIRST CLASS" },
+    { c: 2, r: 0, name: "CORPORAL" },
+    { c: 3, r: 0, name: "SERGEANT" },
+    { c: 3, r: 1, name: "STAFF SERGEANT" },
+    { c: 3, r: 2, name: "SERGEANT FIRST CLASS" },
+    { c: 3, r: 3, name: "MASTER SERGEANT" },
+    { c: 3, r: 3, d: "lozenge", name: "FIRST SERGEANT" },
+    { c: 3, r: 3, d: "star", name: "SERGEANT MAJOR" }
+  ];
+  function rankOf(n) { return RANKS[Math.max(0, Math.min(RANKS.length - 1, n))]; }
+
+  // Drawn over the name, in screen space like the name itself. `low` is the
+  // bottom of the badge; it is built upward from there, rockers nearest the
+  // name and chevrons on top, as they sit on a sleeve.
+  function rankAt(n, cx, low, unit, col, alpha, z) {
+    var R = rankOf(n);
+    if (!R || unit < 0.9) return;                  // too small to make out
+    // The rows have to clear each other or three chevrons read as one blot:
+    // a chevron rises about one unit, so the step between rows is more than
+    // that, and the stroke is thin enough to leave the gap visible.
+    var w = unit * 2.4, y = low, gap = unit * 1.55, th = Math.max(1, unit * 0.3);
+
+    for (var r = 0; r < R.r; r++) {                // rockers: shallow arcs
+      var pts = [[-w, y - unit * 0.34], [-w * 0.55, y], [0, y + unit * 0.2],
+                 [w * 0.55, y], [w, y - unit * 0.34]];
+      for (var i = 0; i + 1 < pts.length; i++)
+        seg(z, [cx + pts[i][0], pts[i][1]], [cx + pts[i + 1][0], pts[i + 1][1]], th, col, alpha, "round");
+      y -= gap;
+    }
+    if (R.d) {                                     // the device sits between
+      var m = unit * 0.85;
+      if (R.d === "lozenge") {
+        var dia = [[0, -m], [m * 0.7, 0], [0, m], [-m * 0.7, 0], [0, -m]];
+        for (var k = 0; k + 1 < dia.length; k++)
+          seg(z, [cx + dia[k][0], y - unit * 0.1 + dia[k][1]],
+                 [cx + dia[k + 1][0], y - unit * 0.1 + dia[k + 1][1]], th, col, alpha, "round");
+      } else {                                     // a five-pointed star
+        var star = [];
+        for (var a = 0; a < 11; a++) {
+          var ang = -Math.PI / 2 + a * Math.PI / 5;
+          var rad = a % 2 === 0 ? m : m * 0.42;
+          star.push([Math.cos(ang) * rad, Math.sin(ang) * rad]);
+        }
+        for (var t = 0; t + 1 < star.length; t++)
+          seg(z, [cx + star[t][0], y - unit * 0.1 + star[t][1]],
+                 [cx + star[t + 1][0], y - unit * 0.1 + star[t + 1][1]], th, col, alpha, "round");
+      }
+      y -= gap * 1.5;
+    }
+    for (var c = 0; c < R.c; c++) {                // chevrons, pointing up
+      seg(z, [cx - w, y], [cx, y - unit * 0.95], th, col, alpha, "round");
+      seg(z, [cx, y - unit * 0.95], [cx + w, y], th, col, alpha, "round");
+      y -= gap;
+    }
+  }
+
   var Font = null;
   function nameAt(text, cx, cy, cap, col, alpha, z) {
     if (!Font) Font = window.DiscWarsFont || null;
@@ -1724,12 +1788,14 @@
       var front = project(ahead(p, toWorld(p, local, 11), 0.3));
       hd.vx = front[0] > hc[0] ? hs * 0.45 : hs * 0.05;
 
-      // The name, over the head, with a mark on the one that came through
-      // the last round.
-      var label = f.champion ? "^" + f.name : f.name;
-      nameAt(label, hc[0], hc[1] - hs * 1.75, hs * 0.62,
-             f.champion ? (f.team === 0 ? programHi : sentinelHi) : col,
-             alpha * (f.champion ? 1 : 0.8), 1000 - hc[2] * 20 + 2);
+      // The name over the head, and above that, if it is the champion, the
+      // rank it has climbed to by holding on.
+      var nameTop = hc[1] - hs * 1.75;
+      var lit = f.team === 0 ? programHi : sentinelHi;
+      var zAt = 1000 - hc[2] * 20 + 2;
+      nameAt(f.name, hc[0], nameTop, hs * 0.62,
+             f.champion ? lit : col, alpha * (f.champion ? 1 : 0.8), zAt);
+      if (f.champion) rankAt(f.stats.rounds, hc[0], nameTop - hs * 0.42, hs * 0.23, lit, alpha, zAt);
     });
 
     // Discs and their trails.
@@ -1860,6 +1926,7 @@
         fighters: fs.map(function (f, i) {
           return { team: f.team, alive: alive(i), name: f.name,
                    champion: f.champion, points: tally(f), stats: f.stats,
+                   rank: f.champion ? (rankOf(f.stats.rounds) || {}).name : null,
                    combos: f.combos.map(function (c) {
                      return { name: c.name, used: c.used, trig: c.trig };
                    }) };
