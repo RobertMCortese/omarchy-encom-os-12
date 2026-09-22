@@ -33,13 +33,16 @@
   var STEP = 60 / BASE_BPM / 2;    // the grid everything snaps to: eighths
   var LOOKAHEAD = 0.12;            // seconds of audio scheduled in advance
   var TICK = 25;                   // ms between runs of the scheduler
-  var MAX_VOICES = 5;              // runs in the air at once, before dropping
+  // One line a side, and the side is busy until its figure has finished.
+  // Naming the speaker was not enough on its own: a figure runs about five
+  // seconds and a fighter throws oftener than that, so the same program was
+  // laying figures over its own.
+  var voiceUntil = [0, 0];
 
   var ctx = null, master = null, notes = null, comp = null, noise = null;
   var sounding = [];               // every melodic voice currently ringing
   var step = 0, stepTime = 0, timer = null;
   var pending = [];                // events waiting for their slot
-  var live = [];                   // end times of runs currently sounding
   var running = false;
 
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
@@ -181,7 +184,7 @@
     }
     sounding = [];
     pending = [];
-    live = [];
+    voiceUntil = [0, 0];
     hanging = {};
   }
 
@@ -207,6 +210,7 @@
     var g = ctx.createGain();
     g.connect(notes);
     var os = [], i;
+    var endAt = t + dur;                            // when this note is actually finished
 
     if (voice === "strings") {
       // Bowed: it arrives rather than starts. Three saws a few cents apart,
@@ -227,7 +231,8 @@
       g.gain.setValueAtTime(0.0001, t);
       g.gain.linearRampToValueAtTime(slvl, t + atk);
       g.gain.setValueAtTime(slvl, t + Math.max(atk, dur - rel));
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + rel * 0.5);   // and a long tail
+      endAt = t + dur + rel * 0.5;                // and a long tail
+      g.gain.exponentialRampToValueAtTime(0.0001, endAt);
 
     } else if (voice === "piano") {
       // Struck and let go: three partials, the upper ones shorter, so the
@@ -240,6 +245,7 @@
         pgn.gain.setValueAtTime(0.0001, t);
         pgn.gain.exponentialRampToValueAtTime(pg[i], t + 0.004);
         pgn.gain.exponentialRampToValueAtTime(0.0001, t + dur * pd[i] + 0.05);
+        endAt = Math.max(endAt, t + dur * pd[i] + 0.05);
         po.connect(pgn); pgn.connect(g); os.push(po);
       }
       g.gain.setValueAtTime(gain * 0.62, t);    // partials sum to about 1.6
@@ -258,7 +264,8 @@
       car.connect(g); os.push(car); os.push(mod);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(gain * 0.9, t + 0.004);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
+      endAt = t + dur + 0.25;                     // metal rings on after it is hit
+      g.gain.exponentialRampToValueAtTime(0.0001, endAt);
 
     } else {
       // The three simple ones: a saw to buzz, a square to sound hollow, a
@@ -289,7 +296,7 @@
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     }
 
-    var off = t + dur + 0.6;
+    var off = endAt + 0.03;
     for (i = 0; i < os.length; i++) { os[i].start(t); os[i].stop(off); }
     keep(g, os, off);
   }
@@ -337,7 +344,14 @@
     transStep++;
   }
 
-  var RANGE = [[45, 78], [31, 64]];                // programs, sentinels
+  // Programs carry the tune and sentinels carry the bass, so they are given
+  // separate ground to stand on rather than the same figure an octave apart.
+  // The two windows do not touch, so nothing either side plays can be mistaken
+  // for the other -- and neither can hide inside the other's register.
+  // The bass floor is A1 and not the D#1 the root suggests, because a laptop
+  // speaker does not reproduce 39Hz and a bassline nobody can hear is not a
+  // bassline.
+  var RANGE = [[52, 79], [33, 51]];                // programs: melody, sentinels: bass
 
   // How many octaves a figure has to move to sit inside its side's window.
   // This is worked out ONCE for a whole figure and applied to every note of
@@ -406,14 +420,28 @@
   // for 0.59 of the space before the next -- so there was a silence between
   // every pair of them and nothing ever overlapped. Twice the room now, and
   // the notes that matter ring into the ones that follow.
+  // A bassline is not a tune in a lower register. It holds the root and
+  // answers it, so its cells are mostly root with the fifth for relief, and
+  // it stays on instruments that keep their shape down there -- strings, a
+  // piano and a bell all turn to mud below A1.
+  var BASS_CELLS = [
+    [0, 0, 0, 4],
+    [0, 0, 4, 0],
+    [0, 0, 0, 0],                                  // just the root, driving
+    [0, 4, 0, 2],
+    [0, 0, 2, 0],
+    [0, 4, 4, 0]
+  ];
+  var BASS_VOICES = ["saw", "square", "sine"];
+
   var GAPS = [2, 4, 3, 4, 2, 6, 3, 4];             // sixteenths from one onset to the next
   var HOLDS = [0.7, 1.1, 0.8, 1.3];                // a passing tone: struck and gone
   var SUSTAIN = [3, 5, 4, 7, 6, 4];                // an anchor: rings on over what follows
   var OCTS = [0, 0, 0, 0, 7, 0];                   // every nth note up an octave, 0 for never
   var figures = {};
 
-  function figure(name) {
-    var key = name || "";
+  function figure(name, team) {
+    var key = team + "|" + (name || "");
     if (figures[key]) return figures[key];
     var h = 2166136261;
     for (var i = 0; i < key.length; i++) {
@@ -421,22 +449,27 @@
       h = Math.imul(h, 16777619);
     }
     h = h >>> 0;
-    var cell = CELLS[(h >>> 5) % CELLS.length], gaps = [], holds = [];
+    var bass = team === 1;
+    var pool = bass ? BASS_CELLS : CELLS;
+    var kit = bass ? BASS_VOICES : VOICES;
+    var cell = pool[(h >>> 5) % pool.length], gaps = [], holds = [];
     for (var m = 0; m < 3; m++) gaps.push(GAPS[(h >>> (2 + m * 5)) % GAPS.length]);
     for (var q = 0; q < 3; q++) holds.push(HOLDS[(h >>> (7 + q * 4)) % HOLDS.length]);
     var f = { n: LENGTHS[h % LENGTHS.length], cell: cell, gaps: gaps, holds: holds,
               sus: SUSTAIN[(h >>> 21) % SUSTAIN.length],
-              voice: VOICES[(h >>> 24) % VOICES.length],
+              voice: kit[(h >>> 24) % kit.length], bass: bass,
               oct: OCTS[(h >>> 17) % OCTS.length] };
     figures[key] = f;
     return f;
   }
 
   function run(t0, e) {
-    var fig = figure(e.name);
+    var fig = figure(e.name, e.team);
     var six = STEP / 2;                            // the sixteenth everything is measured in
     var base = ROOT + (e.team === 0 ? 12 : 0);
-    var lift = e.kind === "block" ? -7 : 0;        // blocks answer an octave down
+    // A melodic block answers an octave below the throw it turns away. A bass
+    // one stays where it is: there is no octave under a bassline to drop to.
+    var lift = (e.kind === "block" && !fig.bass) ? -7 : 0;
     var gain = e.kind === "block" ? 0.15 : 0.12;
     var rot = e.aim || 0;                          // aim enters the cell at a different note
     var t = t0;
@@ -453,17 +486,22 @@
       // is most of what made these read as a machine rather than a part.
       var anchor = (deg === 0 || deg === 4);
       var hold = anchor ? Math.min(fig.sus, gap + 3) : fig.holds[i % fig.holds.length];
+      // A bassline is monophonic. Notes of different pitch ringing over each
+      // other down there is mud rather than harmony, so a bass note lasts
+      // exactly up to the next one: joined up, never stacked. Its lengths
+      // still vary, because the gaps do.
+      if (fig.bass) hold = gap * 0.98;
       // A note that has had room before it lands harder, which is what puts
       // the emphasis somewhere different each time round rather than on the
       // beat every time. A held note comes in softer, because it is going to
       // be there a while and there may be two more over the top of it.
       var hit = gain * (gap >= 3 ? 1.18 : 0.88) * (anchor ? 0.78 : 1);
-      var up = (fig.oct && (i + 1) % fig.oct === 0) ? 12 : 0;
+      var up = (!fig.bass && fig.oct && (i + 1) % fig.oct === 0) ? 12 : 0;
       var d = deg + lift + trans;
       pluck(t, base + degree(d) + off + up, six * hold, e.kind, hit, fig.voice);
       t += six * gap;
     }
-    live.push(t);
+    voiceUntil[e.team] = t;          // this side has a line until here
   }
 
   // ── Hanging on ────────────────────────────────────────────────────────
@@ -476,7 +514,7 @@
   var hangN = 0;
 
   function hangNote(t, who, k) {
-    var fig = figure(who.name);
+    var fig = figure(who.name, who.team);
     var start = fig.cell[0] + trans;                // the degree its figure begins on
     var step3 = [0, 2, 4][k % 3];                   // the note, its third, its fifth
     var base = ROOT + (who.team === 0 ? 12 : 0);
@@ -499,7 +537,6 @@
   // ── The clock ─────────────────────────────────────────────────────────
   function schedule() {
     var now = ctx.currentTime;
-    while (live.length && live[0] < now) live.shift();
     while (stepTime < now + LOOKAHEAD) {
       var eighth = step % 8;                       // eight eighths to the bar
       if (eighth === 0 && wantBpm !== bpm) {       // tempo moves on the bar line
@@ -529,8 +566,14 @@
         pending.splice(pi, 1);
         fired++;
         if (e.kind === "throw" || e.kind === "block") {
-          if (e.kind === "throw") stepKey();       // a block stays in the key it answers
-          if (live.length < MAX_VOICES) run(stepTime, e);
+          // Only the fighter speaking for its side is heard. Everything the
+          // others do still lands on the kit -- the drums are the arena, not
+          // anybody's part -- so a fight with six in it still sounds like a
+          // fight with six in it, while only two of them carry a line.
+          if (e.lead && stepTime >= voiceUntil[e.team]) {
+            if (e.kind === "throw") stepKey();     // a block stays in the key it answers
+            run(stepTime, e);
+          }
           if (e.kind === "block") tom(stepTime, e.tom);
         } else if (e.kind === "bounce" || e.kind === "home") {
           tom(stepTime, e.tom);
@@ -606,7 +649,7 @@
       bpm = wantBpm = BASE_BPM;
       STEP = 60 / bpm / 2;
       stepTime = ctx.currentTime + 0.08;
-      pending = []; live = []; hanging = {}; hangN = 0;
+      pending = []; voiceUntil = [0, 0]; hanging = {}; hangN = 0;
       trans = 0; transStep = 0;
       running = true;
       watchForPermission();
@@ -635,6 +678,7 @@
       if (!running || !ctx) return;
       if (kind === "over") { cutAll(); return; }   // the last of a side is down
       if (kind === "hang") {
+        if (!info.lead) return;                    // only a side's own voice is heard hanging
         hanging[info.name] = { name: info.name, team: info.team };
         return;
       }
@@ -644,6 +688,7 @@
         return;
       }
       pending.push({ kind: kind, team: (info && info.team) || 0,
+                     lead: !!(info && info.lead),
                      aim: info && info.aim != null ? info.aim : 1,
                      name: (info && info.name) || "",
                      tom: info && info.tom != null ? info.tom : 1 });   // which drum, and whose figure

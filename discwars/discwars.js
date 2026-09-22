@@ -398,6 +398,28 @@
     return { throws: 0, hits: 0, blocks: 0, dodges: 0, kills: 0, rings: 0, rounds: 0 };
   }
 
+  // Who speaks for a side. One voice each, because three at once is a pile
+  // and not a part: a champion holds it for as long as it is standing, and
+  // when there is none it belongs to whoever on that side has most to show
+  // for the round so far. It changes hands the moment somebody outscores the
+  // holder or the holder goes down, which is the point -- you hear the side's
+  // best fighter, whoever that has become.
+  //
+  // Worked out when it is asked for and never stored. A thing kept in step
+  // with the world by hand comes apart from it, and this one would have to
+  // be corrected on every hit, block, dodge, ring and death.
+  function voiceOf(team) {
+    var best = -1, bestScore = -1;
+    for (var i = 0; i < fs.length; i++) {
+      if (fs[i].team !== team || !alive(i)) continue;
+      if (fs[i].champion) return i;              // still standing: still speaking
+      var sc = tally(fs[i]);
+      if (sc > bestScore) { bestScore = sc; best = i; }
+    }
+    return best;
+  }
+  function speaks(p) { return voiceOf(fs[p].team) === p; }
+
   function newFighter(team, home, fv) {
     var pd = pads[home];
     return { team: team, home: home, pad: home, foe: -1,
@@ -507,7 +529,7 @@
     fs[p].mode = m; fs[p].mt = 0;
     if (was === m) return;
     if (was === "cling") emit("unhang", { name: fs[p].name, team: fs[p].team });
-    if (m === "cling") emit("hang", { name: fs[p].name, team: fs[p].team });
+    if (m === "cling") emit("hang", { name: fs[p].name, team: fs[p].team, lead: speaks(p) });
   }
 
   var flipTime = 1.1;                            // fight seconds
@@ -1261,7 +1283,8 @@
       if (canAct(p)) {
         launch(handWorld(p));                 // a body shot picks its aim in here
         fs[p].stats.throws++;
-        emit("throw", { team: fs[p].team, aim: fs[p].lastThrowAim, name: fs[p].name });
+        emit("throw", { team: fs[p].team, aim: fs[p].lastThrowAim, name: fs[p].name,
+                        lead: speaks(p) });
         return;
       }
       ds[p].state = "back";                           // lost its footing mid-throw
@@ -1381,7 +1404,8 @@
         fly(p, arc(from, to, rand(0.1, 0.6), viaZ), dur, function () {
           spark(to, hot(p));
           fs[q].stats.blocks++;
-          emit("block", { team: fs[q].team, aim: call.aim, name: fs[q].name, tom: TOM_MID });
+          emit("block", { team: fs[q].team, aim: call.aim, name: fs[q].name,
+                         tom: TOM_MID, lead: speaks(q) });
           lowerShield(q);
           flyHome(p, to, viaZ == null ? null : -viaZ);   // off the other wall on the way back
           after(rand(0.25, 0.45), function () { rally(q); });
