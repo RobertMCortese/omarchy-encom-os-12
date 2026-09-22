@@ -261,7 +261,7 @@
 
 <script src="palette.js?v=e46f3c02"></script>
 <script src="learn.js?v=d1de0737"></script>
-<script src="sound.js?v=ba2dcc28"></script>
+<script src="sound.js?v=98b32f01"></script>
 <script src="poses.js?v=573e2db4"></script>
 <script src="discwars.js?v=4eb003fa"></script>
 <script>
@@ -325,6 +325,7 @@
   }
 
   // The chrome steps back while you watch and comes up on any input.
+  var hintLine = document.querySelector(".hint");
   var restTimer = 0;
   function stir() {
     chrome.classList.remove("resting");
@@ -481,10 +482,22 @@
   } else {
     DiscWars.on(function (kind, info) { DiscWarsSound.play(kind, info); });
     soundBtn.addEventListener("click", function () {
-      var on = !DiscWarsSound.on;
-      if (on && !DiscWarsSound.start()) return;      // no Web Audio here
-      if (!on) DiscWarsSound.stop();
-      soundBtn.setAttribute("aria-pressed", String(DiscWarsSound.on));
+      if (DiscWarsSound.on) {
+        DiscWarsSound.stop();
+        soundBtn.setAttribute("aria-pressed", "false");
+        return;
+      }
+      if (!DiscWarsSound.start()) { soundBtn.hidden = true; return; }   // no Web Audio here
+      soundBtn.setAttribute("aria-pressed", "true");
+      // Resuming is asynchronous and can be refused. Come back and check
+      // rather than leaving the control lit over silence.
+      setTimeout(function () {
+        if (DiscWarsSound.on && !DiscWarsSound.live) {
+          DiscWarsSound.stop();
+          soundBtn.setAttribute("aria-pressed", "false");
+          hintLine.textContent = "Your browser would not start audio \u2014 try again with this tab in front";
+        }
+      }, 400);
     });
   }
 

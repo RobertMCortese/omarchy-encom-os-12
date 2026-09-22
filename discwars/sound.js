@@ -134,6 +134,11 @@
 
   window.DiscWarsSound = {
     get on() { return running; },
+    // Whether anything is actually coming out. A browser will not resume an
+    // audio context except off a real click, and does not resume one in a
+    // background tab at all, so wanting sound and having it are two
+    // different questions and a control that conflates them lies.
+    get live() { return running && !!ctx && ctx.state === "running"; },
     bpm: BPM,
 
     start: function () {
@@ -151,7 +156,10 @@
         master.connect(comp); comp.connect(ctx.destination);
         noise = makeNoise();
       }
-      if (ctx.state === "suspended") ctx.resume();
+      if (ctx.state === "suspended") {
+        var r = ctx.resume();
+        if (r && r.catch) r.catch(function () { /* refused: `live` will say so */ });
+      }
       step = 0;
       stepTime = ctx.currentTime + 0.08;
       pending = []; live = [];
