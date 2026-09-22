@@ -343,7 +343,10 @@
              mode: "stand", mt: 0, yOff: 0, alpha: 1, flip: "side", flipSide: 1,
              high: false, grip: "right", evade: "duck",
              lastAim: -1, lastGuard: -1, lastThrowAim: 1,
-             name: "", champion: false, stats: blankStats() };
+             name: "", champion: false, stats: blankStats(),
+             // What has worked: pairs of throws that ended with a kill, and
+             // the second half of one part-way through being played again.
+             combos: [], plan: null, prevAim: -1 };
   }
 
   // A platform and its four rings. A fighter starts on its own and can end
@@ -896,6 +899,75 @@
     pieces = live;
   }
 
+  // ── What has worked before ────────────────────────────────────────────
+  // When a fighter kills, the throw that did it and the throw before it are
+  // kept together as a pair. From then on it will sometimes open with the
+  // first of them and follow with the second, which is the nearest thing
+  // here to remembering how something was done rather than what tends to
+  // work. Only a champion keeps its pairs; everybody else starts empty, so
+  // a long reign is a fighter carrying more and more of what it has already
+  // got away with -- which is what gives a champion a reason to last.
+  // A pair gets a name when it is first got away with, so a palette reads as
+  // a list of things a fighter knows how to do rather than a table of
+  // numbers. Verb and animal, drawn without repeating inside one palette.
+  var VERBS = ["LEAPING", "STRIKING", "CIRCLING", "DIVING", "STALKING",
+               "COILING", "SWOOPING", "LUNGING", "RISING", "TURNING",
+               "BREAKING", "CUTTING", "DRIFTING", "VAULTING", "SNARING",
+               "HUNTING", "FALLING", "CLOSING"];
+  var BEASTS = ["FOX", "HERON", "ADDER", "LYNX", "RAVEN", "HARE", "MANTIS",
+                "FALCON", "OTTER", "STOAT", "KITE", "SHRIKE", "PIKE", "WOLF",
+                "CRANE", "MARTEN", "VIPER", "OSPREY", "BADGER", "EEL"];
+
+  function comboName(had) {
+    for (var tries = 0; tries < 60; tries++) {
+      var n = VERBS[Math.floor(Math.random() * VERBS.length)] + " " +
+              BEASTS[Math.floor(Math.random() * BEASTS.length)];
+      var clash = false;
+      for (var i = 0; i < had.length; i++) if (had[i].name === n) { clash = true; break; }
+      if (!clash) return n;
+    }
+    return "UNNAMED";
+  }
+
+  var COMBO_MAX = 6;                 // pairs kept; the least used goes first
+  var COMBO_USE = 0.5;               // how often it reaches for one it has
+
+  function rememberKill(p) {
+    var f = fs[p];
+    if (f.prevAim < 0 || f.lastThrowAim < 0) return;
+    for (var i = 0; i < f.combos.length; i++) {
+      if (f.combos[i].a === f.prevAim && f.combos[i].b === f.lastThrowAim) {
+        f.combos[i].used++;                        // seen it work again
+        return;
+      }
+    }
+    f.combos.push({ a: f.prevAim, b: f.lastThrowAim, used: 1,
+                    name: comboName(f.combos) });
+    if (f.combos.length > COMBO_MAX) {
+      var worst = 0;
+      for (var k = 1; k < f.combos.length; k++)
+        if (f.combos[k].used < f.combos[worst].used) worst = k;
+      f.combos.splice(worst, 1);
+    }
+  }
+
+  // The aim a pair calls for, or -1 to let the policy choose.
+  function comboAim(att, def) {
+    var f = fs[att];
+    if (f.plan && f.plan.foe === def) {            // finish what was started
+      var b = f.plan.b;
+      f.plan = null;
+      return b;
+    }
+    f.plan = null;
+    if (f.combos.length && Math.random() < COMBO_USE) {
+      var c = f.combos[Math.floor(Math.random() * f.combos.length)];
+      f.plan = { foe: def, b: c.b };
+      return c.a;
+    }
+    return -1;
+  }
+
   // ── Reading the throw ─────────────────────────────────────────────────
   // A throw is aimed high, at the body or low, and each guard answers one
   // of the three: duck a high one, block a body one on the disc, jump a low
@@ -932,18 +1004,33 @@
   }
 
   function readThrow(att, def, canBlock) {
+    var forced = comboAim(att, def);               // a pair it is trying again
+    var d;
     if (!brains) {
-      var aim = Math.floor(Math.random() * 3);
+      var aim = forced >= 0 ? forced : Math.floor(Math.random() * 3);
       var guards = canBlock ? [0, 1, 2] : [0, 2];
       var guard = guards[Math.floor(Math.random() * guards.length)];
-      fs[att].lastThrowAim = aim;
-      return { aim: aim, guard: guard, through: guard !== aim };
+      d = { aim: aim, guard: guard, through: guard !== aim };
+    } else {
+      var x = situation(att, def);
+      d = window.DiscWarsLearn.decide(brains[fs[att].team], brains[fs[def].team], x, canBlock);
+      if (forced >= 0) {
+        d.aim = forced;
+        d.through = d.guard !== d.aim;
+      }
+      // Learns from the throw actually made, whether the policy chose it or
+      // a pair did: a pair that keeps working teaches the policy as well.
+      window.DiscWarsLearn.settle(brains[fs[att].team], brains[fs[def].team], x, d);
+      fs[def].lastAim = d.aim;
+      fs[def].lastGuard = d.guard;
     }
-    var x = situation(att, def);
-    var d = window.DiscWarsLearn.decide(brains[fs[att].team], brains[fs[def].team], x, canBlock);
-    window.DiscWarsLearn.settle(brains[fs[att].team], brains[fs[def].team], x, d);
-    fs[def].lastAim = d.aim;
-    fs[def].lastGuard = d.guard;
+    // Both paths end the same way. Keeping this in one place is the whole
+    // point: it was in only one of them before, so a body shot from a
+    // thinking fighter never recorded where it was aimed -- which left the
+    // note it sounded stuck in the middle register whatever it did, and left
+    // nothing for a pair to be remembered from.
+    fs[att].prevAim = fs[att].lastThrowAim;
+    fs[att].lastThrowAim = d.aim;
     return d;
   }
 
@@ -1261,7 +1348,10 @@
   // the last of its side: the round is over and the caller's exchange dies
   // with it, rather than being handed on.
   function eliminated(p, settle, by) {
-    if (by != null && by !== p && fs[by]) fs[by].stats.kills++;
+    if (by != null && by !== p && fs[by]) {
+      fs[by].stats.kills++;
+      rememberKill(by);                            // keep how it was done
+    }
     // Called once per fighter per round, so it is what the tempo counts.
     emit("out", { team: fs[p].team, left: liveCount(fs[p].team) });
     if (liveCount(fs[p].team) > 0) return false;   // its side fights on without it
@@ -1304,6 +1394,7 @@
       if (n === champ) continue;
       fs[n].name = freshName(taken);               // a new program on that platform
       fs[n].stats = blankStats();
+      fs[n].combos = []; fs[n].plan = null; fs[n].prevAim = -1;
       fs[n].foe = -1;
       fs[n].lastAim = -1; fs[n].lastGuard = -1;
     }
@@ -1315,6 +1406,7 @@
       f.ring = 0; f.ang = 0; f.pos = [pads[f.home].cx, pads[f.home].cz];
       f.move = null; f.clingRing = -1; f.willClimb = false; f.foe = -1;
       f.blockTarget = 0; f.block = 0;
+      f.plan = null;                               // nothing half-played carries over
       setMode(i, "rez");
       f.yOff = 0; f.alpha = 0;
       play(i, "idle");
@@ -1545,7 +1637,10 @@
         sides: SIDE_NAME.slice(),
         fighters: fs.map(function (f, i) {
           return { team: f.team, alive: alive(i), name: f.name,
-                   champion: f.champion, points: tally(f), stats: f.stats };
+                   champion: f.champion, points: tally(f), stats: f.stats,
+                   combos: f.combos.map(function (c) {
+                     return { name: c.name, used: c.used };
+                   }) };
         }),
         // What the two policies have come to, for the readout. Null when
         // learn.js is not loaded and the fight is being played blind.

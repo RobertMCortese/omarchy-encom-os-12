@@ -62,6 +62,12 @@
   #board .champ b { font-weight: 600; letter-spacing: 0.3em; }
   #board .champ b.a { color: var(--side-a); }
   #board .champ b.b { color: var(--side-b); }
+  /* What the champion has learned to do, named. */
+  #board .palette {
+    margin-top: 5px; font-size: 8.5px; letter-spacing: 0.2em;
+    color: var(--chrome-dim); opacity: 0.85;
+  }
+  #board .palette i { font-style: normal; opacity: 0.45; margin: 0 5px; }
   #board .banner {
     margin-top: 12px; font-size: 13px; letter-spacing: 0.5em;
     color: var(--accent-hi);
@@ -79,6 +85,12 @@
   #board .champ b { font-weight: 600; letter-spacing: 0.3em; }
   #board .champ b.a { color: var(--side-a); }
   #board .champ b.b { color: var(--side-b); }
+  /* What the champion has learned to do, named. */
+  #board .palette {
+    margin-top: 5px; font-size: 8.5px; letter-spacing: 0.2em;
+    color: var(--chrome-dim); opacity: 0.85;
+  }
+  #board .palette i { font-style: normal; opacity: 0.45; margin: 0 5px; }
   #board .banner { font-size: 11px; letter-spacing: 0.34em; }
   }
 
@@ -280,7 +292,7 @@
 <script src="learn.js?v=d1de0737"></script>
 <script src="sound.js?v=bc732324"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=e774b9cf"></script>
+<script src="discwars.js?v=c5ee01ea"></script>
 <script>
 (function () {
   "use strict";
@@ -448,7 +460,8 @@
     var ch = null;
     for (var i = 0; i < st.fighters.length; i++) if (st.fighters[i].champion) ch = st.fighters[i];
     var key = st.score.join(":") + "|" + st.banner + "|" + flags +
-              "|" + (ch ? ch.name + ch.points + ch.stats.rounds : "");
+              "|" + (ch ? ch.name + ch.points + ch.stats.rounds +
+                          (ch.combos || []).map(function (c) { return c.name + c.used; }).join() : "");
     if (key === boardKey) return;
     boardKey = key;
 
@@ -465,7 +478,12 @@
       (ch ? '<div class="champ">CHAMPION <b class="' + (ch.team === 0 ? "a" : "b") + '">' +
             ch.name + "</b> \u00b7 " + ch.stats.rounds + (ch.stats.rounds === 1 ? " ROUND" : " ROUNDS") +
             " \u00b7 " + ch.points + " PTS \u00b7 " + ch.stats.kills +
-            (ch.stats.kills === 1 ? " KILL" : " KILLS") + "</div>" : "") +
+            (ch.stats.kills === 1 ? " KILL" : " KILLS") + "</div>" +
+            (ch.combos && ch.combos.length
+              ? '<div class="palette">' + ch.combos.map(function (c) {
+                  return c.name + (c.used > 1 ? " \u00d7" + c.used : "");
+                }).join("<i>\u00b7</i>") + "</div>"
+              : "") : "") +
       (st.banner ? '<div class="banner">' + st.banner + "</div>" : "");
   }
   // ── What the sides have learned ───────────────────────────────────────
