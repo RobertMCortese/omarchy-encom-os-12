@@ -183,13 +183,26 @@
 
   // ── A fighter's figure ────────────────────────────────────────────────
   // Every run is an odd number of notes -- 7, 9, 11 or 13 -- played three,
-  // a breath, then the rest. Which length, and the shape of the walk through
-  // the scale, come from the fighter's own name, so GREP throws the same
+  // a breath, then the rest. Which length, the walk through the scale, and
+  // the rhythm all come from the fighter's own name, so GREP throws the same
   // figure every time and a name that comes back in a later round brings its
-  // sound with it. Nothing is stored: the name is hashed and the figure
-  // falls out of the bits, so the same name always gives the same phrase.
+  // sound with it. Nothing is stored: the name is hashed and the figure falls
+  // out of the bits, so the same name always gives the same phrase.
+  //
+  // The rhythm is not an even run of sixteenths, because an even run of
+  // sixteenths is the one thing this style never does. Writing about Daft
+  // Punk's parts, Attack Magazine puts the hallmark as almost every
+  // consecutive note having a different length, with the emphasis moving
+  // around the sixteenths of the bar rather than sitting on the same ones,
+  // and gaps left on purpose. So a figure carries three cells -- where the
+  // notes fall, how long each rings, and where it steps to -- of lengths
+  // 4, 3 and 3, which come back into phase only every twelve notes. Nothing
+  // here is anybody's melody; it is a way of spacing notes.
   var LENGTHS = [7, 9, 11, 13];
   var MOVES = [1, 1, 2, -1, 1, 2, -2, 3];          // degree steps to choose between
+  var GAPS = [1, 2, 1, 1, 3, 2, 1, 2];             // sixteenths from one onset to the next
+  var HOLDS = [0.55, 1.35, 0.8, 0.5, 1.7, 0.9];    // how long each note rings, in sixteenths
+  var OCTS = [0, 0, 4, 3, 5, 0];                   // every nth note up an octave, 0 for never
   var figures = {};
 
   function figure(name) {
@@ -201,26 +214,36 @@
       h = Math.imul(h, 16777619);
     }
     h = h >>> 0;
-    var cell = [];
+    var cell = [], gaps = [], holds = [];
     for (var k = 0; k < 3; k++) cell.push(MOVES[(h >>> (5 + k * 3)) % MOVES.length]);
-    var f = { n: LENGTHS[h % LENGTHS.length], cell: cell };
+    for (var m = 0; m < 4; m++) gaps.push(GAPS[(h >>> (2 + m * 5)) % GAPS.length]);
+    for (var q = 0; q < 3; q++) holds.push(HOLDS[(h >>> (7 + q * 4)) % HOLDS.length]);
+    var f = { n: LENGTHS[h % LENGTHS.length], cell: cell, gaps: gaps, holds: holds,
+              oct: OCTS[(h >>> 17) % OCTS.length] };
     figures[key] = f;
     return f;
   }
 
   function run(t0, e) {
     var fig = figure(e.name);
-    var six = STEP / 2;                            // sixteenths, so even 13 fits a bar
+    var six = STEP / 2;                            // the sixteenth everything is measured in
     var base = ROOT + (e.team === 0 ? 12 : 0);
     var dir = e.kind === "block" ? -1 : 1;         // blocks come back down
     var gain = e.kind === "block" ? 0.15 : 0.12;
     var d = AIM_STEP[e.aim] || 0;
     var t = t0;
     for (var i = 0; i < fig.n; i++) {
-      if (i === 3) t += six;                       // three, a breath, then the rest
-      pluck(t, base + degree(d), six * 0.85, e.kind, gain);
-      d += dir * fig.cell[i % 3];
-      t += six;
+      if (i === 3) t += six * 2;                   // three, a breath, then the rest
+      var gap = fig.gaps[i % fig.gaps.length];
+      var hold = fig.holds[i % fig.holds.length];
+      // A note that has had room before it lands harder, which is what puts
+      // the emphasis somewhere different each time round rather than on the
+      // beat every time.
+      var hit = gain * (gap >= 2 ? 1.18 : 0.88);
+      var up = (fig.oct && (i + 1) % fig.oct === 0) ? 12 : 0;
+      pluck(t, base + degree(d) + up, six * hold, e.kind, hit);
+      d += dir * fig.cell[i % fig.cell.length];
+      t += six * gap;
     }
     live.push(t);
   }
