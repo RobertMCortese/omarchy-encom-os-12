@@ -68,6 +68,9 @@
     color: var(--chrome-dim); opacity: 0.85;
   }
   #board .palette i { font-style: normal; opacity: 0.45; margin: 0 5px; }
+  #board .palette b { font-weight: 400; }
+  #board .palette b.counter { color: var(--accent-hi); opacity: 0.95; }
+  #board .palette b.press { opacity: 0.7; }
   #board .banner {
     margin-top: 12px; font-size: 13px; letter-spacing: 0.5em;
     color: var(--accent-hi);
@@ -91,6 +94,9 @@
     color: var(--chrome-dim); opacity: 0.85;
   }
   #board .palette i { font-style: normal; opacity: 0.45; margin: 0 5px; }
+  #board .palette b { font-weight: 400; }
+  #board .palette b.counter { color: var(--accent-hi); opacity: 0.95; }
+  #board .palette b.press { opacity: 0.7; }
   #board .banner { font-size: 11px; letter-spacing: 0.34em; }
   }
 
@@ -292,7 +298,7 @@
 <script src="learn.js?v=d1de0737"></script>
 <script src="sound.js?v=bc732324"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=c5ee01ea"></script>
+<script src="discwars.js?v=141c8838"></script>
 <script>
 (function () {
   "use strict";
@@ -481,7 +487,11 @@
             (ch.stats.kills === 1 ? " KILL" : " KILLS") + "</div>" +
             (ch.combos && ch.combos.length
               ? '<div class="palette">' + ch.combos.map(function (c) {
-                  return c.name + (c.used > 1 ? " \u00d7" + c.used : "");
+                  // A counter answers a guard it has just had to use; a press
+                  // is an opening it starts itself.
+                  var mark = c.trig === "guard" ? "\u21b5\u2009" : "";
+                  return '<b class="' + (c.trig === "guard" ? "counter" : "press") + '">' +
+                         mark + c.name + (c.used > 1 ? " \u00d7" + c.used : "") + "</b>";
                 }).join("<i>\u00b7</i>") + "</div>"
               : "") : "") +
       (st.banner ? '<div class="banner">' + st.banner + "</div>" : "");

@@ -932,23 +932,33 @@
   var COMBO_MAX = 6;                 // pairs kept; the least used goes first
   var COMBO_USE = 0.5;               // how often it reaches for one it has
 
-  function rememberKill(p) {
-    var f = fs[p];
-    if (f.prevAim < 0 || f.lastThrowAim < 0) return;
+  // A kill teaches two things, and the more useful of them is the defensive
+  // one. "I ducked, and then I killed with a low throw" is a counter: it is
+  // keyed on a situation, so it comes back out when that situation does. "I
+  // threw high, then killed with a body shot" is a press: an opening and its
+  // follow-up, which has to be started on purpose. Both are kept; the
+  // counter is reached for first.
+  function learnPair(f, trig, from, b) {
+    if (from < 0 || b < 0) return;
     for (var i = 0; i < f.combos.length; i++) {
-      if (f.combos[i].a === f.prevAim && f.combos[i].b === f.lastThrowAim) {
+      if (f.combos[i].trig === trig && f.combos[i].from === from && f.combos[i].b === b) {
         f.combos[i].used++;                        // seen it work again
         return;
       }
     }
-    f.combos.push({ a: f.prevAim, b: f.lastThrowAim, used: 1,
-                    name: comboName(f.combos) });
-    if (f.combos.length > COMBO_MAX) {
+    f.combos.push({ trig: trig, from: from, b: b, used: 1, name: comboName(f.combos) });
+    while (f.combos.length > COMBO_MAX) {
       var worst = 0;
       for (var k = 1; k < f.combos.length; k++)
         if (f.combos[k].used < f.combos[worst].used) worst = k;
       f.combos.splice(worst, 1);
     }
+  }
+
+  function rememberKill(p) {
+    var f = fs[p];
+    learnPair(f, "guard", f.lastGuard, f.lastThrowAim);   // what it answered, then took
+    learnPair(f, "aim", f.prevAim, f.lastThrowAim);       // what it opened with, then took
   }
 
   // The aim a pair calls for, or -1 to let the policy choose.
@@ -960,10 +970,29 @@
       return b;
     }
     f.plan = null;
-    if (f.combos.length && Math.random() < COMBO_USE) {
-      var c = f.combos[Math.floor(Math.random() * f.combos.length)];
-      f.plan = { foe: def, b: c.b };
-      return c.a;
+
+    // A counter first: if it has one for the guard it just had to use, that
+    // situation has come round again and this is what it did last time.
+    if (f.lastGuard >= 0) {
+      var hits = [];
+      for (var i = 0; i < f.combos.length; i++)
+        if (f.combos[i].trig === "guard" && f.combos[i].from === f.lastGuard) hits.push(f.combos[i]);
+      if (hits.length && Math.random() < COMBO_USE) {
+        var c = hits[Math.floor(Math.random() * hits.length)];
+        c.used++;
+        return c.b;
+      }
+    }
+
+    // Otherwise it may open a press, which it has to start itself and so is
+    // the more readable of the two. Reached for less often for that reason.
+    var press = [];
+    for (var k = 0; k < f.combos.length; k++)
+      if (f.combos[k].trig === "aim") press.push(f.combos[k]);
+    if (press.length && Math.random() < COMBO_USE * 0.5) {
+      var q = press[Math.floor(Math.random() * press.length)];
+      f.plan = { foe: def, b: q.b };
+      return q.from;
     }
     return -1;
   }
@@ -1639,7 +1668,7 @@
           return { team: f.team, alive: alive(i), name: f.name,
                    champion: f.champion, points: tally(f), stats: f.stats,
                    combos: f.combos.map(function (c) {
-                     return { name: c.name, used: c.used };
+                     return { name: c.name, used: c.used, trig: c.trig };
                    }) };
         }),
         // What the two policies have come to, for the readout. Null when
