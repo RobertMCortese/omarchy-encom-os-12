@@ -108,6 +108,10 @@
   .palette:focus-visible, .size:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* The match size reads as a count, so it gets the wider tracking of a label. */
   .size { letter-spacing: 0.24em; }
+  /* Off until asked for: a browser will not start audio unasked anyway, and
+     nor should a page that opens itself. */
+  .sound { letter-spacing: 0.24em; }
+  .sound[aria-pressed="true"] { color: var(--chrome); border-color: var(--accent); }
   /* Each chip carries the two colours its fighters wear. */
   .swatch { display: inline-flex; gap: 3px; }
   .swatch i { width: 7px; height: 7px; border-radius: 50%; display: block; }
@@ -236,7 +240,9 @@
 
     <div class="foot">
       <div class="brains" id="brains" hidden></div>
-      <div class="sizes" id="sizes" role="group" aria-label="Match size"></div>
+      <div class="sizes" id="sizes" role="group" aria-label="Match size">
+        <button type="button" class="palette sound" id="sound" aria-pressed="false">Sound</button>
+      </div>
       <div class="palettes" id="palettes" role="group" aria-label="Colour scheme"></div>
       <p class="hint">Click the arena to hold it</p>
       <p class="credit">
@@ -255,8 +261,9 @@
 
 <script src="palette.js?v=e46f3c02"></script>
 <script src="learn.js?v=d1de0737"></script>
+<script src="sound.js?v=ba2dcc28"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=b5a98201"></script>
+<script src="discwars.js?v=4eb003fa"></script>
 <script>
 (function () {
   "use strict";
@@ -335,6 +342,7 @@
     if (embedded) return;                 // input ends a screensaver; it does not pause it
     held = !held;
     DiscWars.setPaused(held);
+    if (window.DiscWarsSound && DiscWarsSound.on && held) DiscWarsSound.stop();
   });
 
   // Run by the Boardroom server as a screensaver or the desktop background:
@@ -460,6 +468,25 @@
 
   setInterval(drawBoard, 250);
   setInterval(drawBrains, 600);
+
+  // ── Sound ─────────────────────────────────────────────────────────────
+  // The fight drives a 120 BPM sequencer: a throw is a chromatic run half a
+  // measure long, a block a whole one, both held to the next eighth so they
+  // land on the beat. Starting it needs a click -- browsers require one
+  // before any audio, and a page that made noise on open would deserve it.
+  var soundBtn = document.getElementById("sound");
+  var soundReady = !!window.DiscWarsSound;
+  if (!soundReady) {
+    soundBtn.hidden = true;
+  } else {
+    DiscWars.on(function (kind, info) { DiscWarsSound.play(kind, info); });
+    soundBtn.addEventListener("click", function () {
+      var on = !DiscWarsSound.on;
+      if (on && !DiscWarsSound.start()) return;      // no Web Audio here
+      if (!on) DiscWarsSound.stop();
+      soundBtn.setAttribute("aria-pressed", String(DiscWarsSound.on));
+    });
+  }
 
   var still = window.matchMedia("(prefers-reduced-motion: reduce)");
   if (still.matches) {

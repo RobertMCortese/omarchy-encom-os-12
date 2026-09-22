@@ -273,7 +273,7 @@
              speed: 1, from: null, blend: 1, block: 0, blockTarget: 0, pose: null,
              mode: "stand", mt: 0, yOff: 0, alpha: 1, flip: "side", flipSide: 1,
              high: false, grip: "right", evade: "duck",
-             lastAim: -1, lastGuard: -1 };
+             lastAim: -1, lastGuard: -1, lastThrowAim: 1 };
   }
 
   // A platform and its four rings. A fighter starts on its own and can end
@@ -854,6 +854,7 @@
       var aim = Math.floor(Math.random() * 3);
       var guards = canBlock ? [0, 1, 2] : [0, 2];
       var guard = guards[Math.floor(Math.random() * guards.length)];
+      fs[att].lastThrowAim = aim;
       return { aim: aim, guard: guard, through: guard !== aim };
     }
     var x = situation(att, def);
@@ -865,6 +866,15 @@
   }
 
   // ── The duel ──────────────────────────────────────────────────────────
+  // Anything listening to the fight -- the sequencer, if it is on. Emitting
+  // is guarded so a listener that throws cannot take the fight down with it.
+  var listeners = [];
+  function emit(kind, info) {
+    for (var i = 0; i < listeners.length; i++) {
+      try { listeners[i](kind, info); } catch (e) { /* not the fight's problem */ }
+    }
+  }
+
   var queue = [];
   function after(delay, fn) { queue.push({ at: now + delay, fn: fn }); }
   // For what waits on something shown at real speed (a fall, a rez).
@@ -888,7 +898,11 @@
     play(p, "throw", throwSpeed);
     after(0.12, function () { ds[p].state = "hand"; });
     after(releaseTime(), function () {
-      if (canAct(p)) { launch(handWorld(p)); return; }
+      if (canAct(p)) {
+        launch(handWorld(p));                 // a body shot picks its aim in here
+        emit("throw", { team: fs[p].team, aim: fs[p].lastThrowAim });
+        return;
+      }
       ds[p].state = "back";                           // lost its footing mid-throw
       after(0.4, function () { rally(p); });          // the exchange carries on without it
     });
@@ -925,6 +939,7 @@
   // the one it stands on. A defender with its disc at home may catch it
   // overhead instead; a clinging one cannot.
   function bankShot(p, q, k) {
+    fs[p].lastThrowAim = 0;                   // off the ceiling: the high register
     throwFrom(p, function (from) {
       var caught = fs[q].mode === "stand" && canAct(q) && discHome(q) && Math.random() < 0.4;
       var over = ahead(q, chestWorld(q), 0.15);
@@ -981,6 +996,7 @@
         after(Math.max(0, dur - 0.3), function () { raiseShield(q, false); });
         fly(p, [from, [mid[0], mid[1] + rand(0.1, 0.6), mid[2] + rand(-1.4, 1.4)], to], dur, function () {
           spark(to, hot(p));
+          emit("block", { team: fs[q].team, aim: call.aim });
           lowerShield(q);
           flyHome(p, to);
           after(rand(0.25, 0.45), function () { rally(q); });
@@ -1054,6 +1070,7 @@
     m[2] += rand(-0.6, 0.6);
     var landed = 0;
     [p, q].forEach(function (who) {
+      fs[who].lastThrowAim = 1;               // they meet in the middle
       throwFrom(who, function (from) {
         var mid = lerp3(from, m, 0.5);
         fly(who, [from, [mid[0], mid[1] + 0.3, mid[2] + rand(-0.6, 0.6)], m], 0.65, function () {
@@ -1373,6 +1390,8 @@
       });
     },
     setPaused: setPaused,
+    // Listen to the fight: ("throw"|"block", { team, aim }).
+    on: function (fn) { if (typeof fn === "function") listeners.push(fn); },
     // 1 for the duel, 2 or 3 for a team match. Restarts the fight.
     setTeams: function (n) {
       buildMatch(n);

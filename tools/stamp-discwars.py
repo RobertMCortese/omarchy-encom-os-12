@@ -17,7 +17,7 @@ import re
 HERE = pathlib.Path(__file__).resolve().parent
 APP = HERE.parent / "discwars"
 PAGE = APP / "index.html"
-SCRIPTS = ("palette.js", "learn.js", "poses.js", "discwars.js")
+SCRIPTS = ("palette.js", "learn.js", "sound.js", "poses.js", "discwars.js")
 
 
 def stamp(name):

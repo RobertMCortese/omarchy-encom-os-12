@@ -205,7 +205,7 @@ if (( ! DRY )); then
   mkdir -p "$TMP/dw/app"
   # palette.js is a placeholder here; the server answers /palette.js itself
   # with the current theme, so the duel runs in the desktop's colours.
-  cp "$REPO"/discwars/{index.html,discwars.js,learn.js,poses.js,palette.js} "$TMP/dw/app/"
+  cp "$REPO"/discwars/{index.html,discwars.js,learn.js,sound.js,poses.js,palette.js} "$TMP/dw/app/"
   put_own "$TMP/dw" "$DISCWARS"
 fi
 
