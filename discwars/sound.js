@@ -178,6 +178,23 @@
   // block descending from D#1 ended up under 5 Hz, which is ten of its
   // thirteen notes spent below anything anyone can hear. Folding by octaves
   // keeps the shape of the line and puts it back in the room.
+  // The figures repeat, because a name always gives the same one. So the
+  // ground they stand on moves instead: every throw shifts the key a
+  // semitone, up or down at random, never further than two either way, and
+  // every fourth throw drops it back to where it started. Four throws is
+  // about a bar or two of fighting, so the colour keeps changing without
+  // ever wandering off. Only the notes move -- the kit is where it was, and
+  // a drum that followed the key around would stop sounding like a drum.
+  var TRANS_MAX = 2, TRANS_EVERY = 4;
+  var trans = 0, transStep = 0;
+  function stepKey() {
+    if (transStep >= TRANS_EVERY) { trans = 0; transStep = 0; return; }
+    var dir = Math.random() < 0.5 ? -1 : 1;
+    if (trans + dir > TRANS_MAX || trans + dir < -TRANS_MAX) dir = -dir;
+    trans += dir;
+    transStep++;
+  }
+
   var RANGE = [[45, 78], [31, 64]];                // programs, sentinels
   function fold(m, team) {
     var r = RANGE[team] || RANGE[1];
@@ -254,7 +271,7 @@
       // beat every time.
       var hit = gain * (gap >= 2 ? 1.18 : 0.88);
       var up = (fig.oct && (i + 1) % fig.oct === 0) ? 12 : 0;
-      pluck(t, fold(base + degree(d), e.team) + up, six * hold, e.kind, hit);
+      pluck(t, fold(base + degree(d), e.team) + up + trans, six * hold, e.kind, hit);
       d += dir * fig.cell[i % fig.cell.length];
       t += six * gap;
     }
@@ -275,7 +292,7 @@
     var start = AIM_STEP[1];                        // where its figure begins
     var step3 = [0, 3, 6][k % 3];                   // the note, a third up, its octave
     var base = ROOT + (who.team === 0 ? 12 : 0);
-    var m = fold(base + degree(start + step3), who.team);
+    var m = fold(base + degree(start + step3), who.team) + trans;
     var o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
     var f0 = mtof(m);
     o.type = "triangle";                            // softer than the runs, so it sits under
@@ -323,6 +340,7 @@
         pending.splice(pi, 1);
         fired++;
         if (e.kind === "throw" || e.kind === "block") {
+          if (e.kind === "throw") stepKey();       // a block stays in the key it answers
           if (live.length < MAX_VOICES) run(stepTime, e);
           if (e.kind === "block") tom(stepTime, Math.floor(Math.random() * 3));
         } else if (e.kind === "bounce") {
@@ -394,6 +412,7 @@
       STEP = 60 / bpm / 2;
       stepTime = ctx.currentTime + 0.08;
       pending = []; live = []; hanging = {}; hangN = 0;
+      trans = 0; transStep = 0;
       running = true;
       watchForPermission();
       if (timer) clearInterval(timer);
@@ -424,7 +443,10 @@
         return;
       }
       if (kind === "unhang") { delete hanging[info.name]; return; }
-      if (kind === "round") { hanging = {}; return; }   // nobody is left hanging
+      if (kind === "round") {                       // nobody hanging, back to the root
+        hanging = {}; trans = 0; transStep = 0;
+        return;
+      }
       pending.push({ kind: kind, team: (info && info.team) || 0,
                      aim: info && info.aim != null ? info.aim : 1,
                      name: (info && info.name) || "" });   // whose figure to play
