@@ -1594,9 +1594,15 @@
     }
     if (canAct(q) && discHome(q) && Math.random() < 0.15) { clash(p, q); return; }
     if (Math.random() < 0.12) {
-      // Bank one off the ceiling: at the ring it stands on, or another.
+      // Bank one off the ceiling: at the ring it stands on, or another. Late
+      // in a round every other ring under a fighter can be broken, and then
+      // there is no other -- the one it is standing on is the only place the
+      // disc can come down. Picking out of an empty list handed ringMid an
+      // undefined index and took the whole animation loop down with it.
       var up = intactRings(q);
-      bankShot(p, q, Math.random() < 0.55 ? fs[q].ring : up[Math.floor(Math.random() * up.length)]);
+      var at = fs[q].ring;
+      if (up.length && Math.random() >= 0.55) at = up[Math.floor(Math.random() * up.length)];
+      bankShot(p, q, at);
       return;
     }
     // Or off a side wall, coming in from an angle rather than straight on.

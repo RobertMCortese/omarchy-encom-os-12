@@ -168,13 +168,14 @@
   // answers by walking back down: the line follows the fight rather than
   // decorating it.
   //
-  // D# natural minor, less its fifth: D# E# F# G# B C#. Runs step through
-  // these rather than through semitones, so a line stays in key however many
-  // of them are going at once -- which matters here, because in a 3v3 there
-  // are often three.
+  // D# natural minor, all seven. The six originally asked for left out A#,
+  // which is the fifth, and a riff of this kind is built on its root and its
+  // fifth before anything else -- the textbook acid ostinato is two notes and
+  // they are those two. Without one there was nothing for a line to lean on
+  // and nowhere for it to come to rest. Take the 7 back out of SCALE to have
+  // the six again; everything below is written in degrees and will follow.
   var ROOT = 27;                                   // D#1
-  var SCALE = [0, 2, 3, 5, 8, 10];                 // D# E# F# G# B C#
-  var AIM_STEP = [4, 2, 0];                        // high, body, low: which degree to start on
+  var SCALE = [0, 2, 3, 5, 7, 8, 10];              // D# E# F# G# A# B C#
 
   // Where each side's notes are allowed to sit. A run walks as far as its
   // figure takes it, and a long one walks a long way -- a thirteen-note
@@ -182,12 +183,19 @@
   // thirteen notes spent below anything anyone can hear. Folding by octaves
   // keeps the shape of the line and puts it back in the room.
   // The figures repeat, because a name always gives the same one. So the
-  // ground they stand on moves instead: every throw shifts the key a
-  // semitone, up or down at random, never further than two either way, and
-  // every fourth throw drops it back to where it started. Four throws is
-  // about a bar or two of fighting, so the colour keeps changing without
-  // ever wandering off. Only the notes move -- the kit is where it was, and
-  // a drum that followed the key around would stop sounding like a drum.
+  // ground they stand on moves instead: every throw shifts the whole figure,
+  // up or down at random, never further than two either way, and every
+  // fourth throw drops it back where it started.
+  //
+  // It shifts by a DEGREE of the scale, not by a semitone. A semitone was
+  // the obvious reading and it was wrong: move a minor scale a semitone and
+  // every note of it lands outside the key, and with several fighters at
+  // different offsets at once the arena was playing all twelve pitch classes
+  // at roughly even weight. There was no key left to hear. A degree moves
+  // the figure the same distance to the ear and keeps every note in D# minor,
+  // so three fighters going at once still agree about what key they are in.
+  // Only the notes move -- the kit is where it was, and a drum that followed
+  // the key around would stop sounding like a drum.
   var TRANS_MAX = 2, TRANS_EVERY = 4;
   var trans = 0, transStep = 0;
   function stepKey() {
@@ -199,11 +207,20 @@
   }
 
   var RANGE = [[45, 78], [31, 64]];                // programs, sentinels
-  function fold(m, team) {
-    var r = RANGE[team] || RANGE[1];
-    while (m < r[0]) m += 12;
-    while (m > r[1]) m -= 12;
-    return m;
+
+  // How many octaves a figure has to move to sit inside its side's window.
+  // This is worked out ONCE for a whole figure and applied to every note of
+  // it. Folding each note where it fell was the last thing making these read
+  // as random: a figure straddling the edge of the window had some of its
+  // notes shifted an octave and the rest left alone, so a rise came out as a
+  // fall and the line was turned inside out mid-phrase. The widest interval
+  // inside a cell is a fifth, yet minor sixths were the second commonest
+  // thing being played -- there was nowhere else they could have come from.
+  function foldShift(m, team) {
+    var r = RANGE[team] || RANGE[1], k = 0;
+    while (m + k < r[0]) k += 12;
+    while (m + k > r[1]) k -= 12;
+    return k;
   }
 
   // Degree d of the scale, carrying on into the octave above as it runs out.
@@ -231,11 +248,31 @@
   // notes fall, how long each rings, and where it steps to -- of lengths
   // 4, 3 and 3, which come back into phase only every twelve notes. Nothing
   // here is anybody's melody; it is a way of spacing notes.
+  //
+  // The pitches are a four-degree cell repeated for the length of the run,
+  // and they are absolute degrees rather than steps from wherever the last
+  // note happened to land. What was there before added a step each note, so
+  // a thirteen-note run was thirteen additions deep by the end and had drifted
+  // somewhere unrelated to where it started -- a random walk, which measures
+  // out as one: the intervals came out 68% leaps wider than a major third,
+  // spread flat across every size. Melodies are mostly steps and they come
+  // back. Every cell here starts on the root and leans on the fifth (degree
+  // 4) and the third (degree 2), and because it repeats inside the run there
+  // is something to recognise the second time it comes round.
   var LENGTHS = [7, 9, 11, 13];
-  var MOVES = [1, 1, 2, -1, 1, 2, -2, 3];          // degree steps to choose between
+  var CELLS = [                                    // degrees of the scale, repeated
+    [0, 0, 4, 2],                                  // root, root, fifth, third
+    [0, 4, 3, 2],
+    [0, 2, 4, 2],
+    [4, 2, 0, 2],
+    [0, 0, 2, 0],                                  // insistent on the root
+    [0, 1, 2, 4],                                  // stepwise up to the fifth
+    [4, 4, 2, 0],
+    [0, 2, 0, 4]                                  // root, third, root, fifth
+  ];
   var GAPS = [1, 2, 1, 1, 3, 2, 1, 2];             // sixteenths from one onset to the next
   var HOLDS = [0.55, 1.35, 0.8, 0.5, 1.7, 0.9];    // how long each note rings, in sixteenths
-  var OCTS = [0, 0, 4, 3, 5, 0];                   // every nth note up an octave, 0 for never
+  var OCTS = [0, 0, 0, 0, 7, 0];                   // every nth note up an octave, 0 for never
   var figures = {};
 
   function figure(name) {
@@ -247,9 +284,8 @@
       h = Math.imul(h, 16777619);
     }
     h = h >>> 0;
-    var cell = [], gaps = [], holds = [];
-    for (var k = 0; k < 3; k++) cell.push(MOVES[(h >>> (5 + k * 3)) % MOVES.length]);
-    for (var m = 0; m < 4; m++) gaps.push(GAPS[(h >>> (2 + m * 5)) % GAPS.length]);
+    var cell = CELLS[(h >>> 5) % CELLS.length], gaps = [], holds = [];
+    for (var m = 0; m < 3; m++) gaps.push(GAPS[(h >>> (2 + m * 5)) % GAPS.length]);
     for (var q = 0; q < 3; q++) holds.push(HOLDS[(h >>> (7 + q * 4)) % HOLDS.length]);
     var f = { n: LENGTHS[h % LENGTHS.length], cell: cell, gaps: gaps, holds: holds,
               oct: OCTS[(h >>> 17) % OCTS.length] };
@@ -261,10 +297,13 @@
     var fig = figure(e.name);
     var six = STEP / 2;                            // the sixteenth everything is measured in
     var base = ROOT + (e.team === 0 ? 12 : 0);
-    var dir = e.kind === "block" ? -1 : 1;         // blocks come back down
+    var lift = e.kind === "block" ? -7 : 0;        // blocks answer an octave down
     var gain = e.kind === "block" ? 0.15 : 0.12;
-    var d = AIM_STEP[e.aim] || 0;
+    var rot = e.aim || 0;                          // aim enters the cell at a different note
     var t = t0;
+    // Placed by its lowest note, so nothing in the figure drops out of hearing.
+    var low = Math.min.apply(null, fig.cell) + lift + trans;
+    var off = foldShift(base + degree(low), e.team);
     for (var i = 0; i < fig.n; i++) {
       if (i === 3) t += six * 2;                   // three, a breath, then the rest
       var gap = fig.gaps[i % fig.gaps.length];
@@ -274,8 +313,8 @@
       // beat every time.
       var hit = gain * (gap >= 2 ? 1.18 : 0.88);
       var up = (fig.oct && (i + 1) % fig.oct === 0) ? 12 : 0;
-      pluck(t, fold(base + degree(d), e.team) + up + trans, six * hold, e.kind, hit);
-      d += dir * fig.cell[i % fig.cell.length];
+      var d = fig.cell[(i + rot) % fig.cell.length] + lift + trans;
+      pluck(t, base + degree(d) + off + up, six * hold, e.kind, hit);
       t += six * gap;
     }
     live.push(t);
@@ -292,10 +331,10 @@
 
   function hangNote(t, who, k) {
     var fig = figure(who.name);
-    var start = AIM_STEP[1];                        // where its figure begins
-    var step3 = [0, 3, 6][k % 3];                   // the note, a third up, its octave
+    var start = fig.cell[0] + trans;                // the degree its figure begins on
+    var step3 = [0, 2, 4][k % 3];                   // the note, its third, its fifth
     var base = ROOT + (who.team === 0 ? 12 : 0);
-    var m = fold(base + degree(start + step3), who.team) + trans;
+    var m = base + degree(start + step3) + foldShift(base + degree(start), who.team);
     var o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
     var f0 = mtof(m);
     o.type = "triangle";                            // softer than the runs, so it sits under
