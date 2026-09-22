@@ -35,7 +35,8 @@
   var TICK = 25;                   // ms between runs of the scheduler
   var MAX_VOICES = 5;              // runs in the air at once, before dropping
 
-  var ctx = null, master = null, comp = null, noise = null;
+  var ctx = null, master = null, notes = null, comp = null, noise = null;
+  var sounding = [];               // every melodic voice currently ringing
   var step = 0, stepTime = 0, timer = null;
   var pending = [];                // events waiting for their slot
   var live = [];                   // end times of runs currently sounding
@@ -147,33 +148,150 @@
   // ── The runs ──────────────────────────────────────────────────────────
   // One plucked note: a saw through a filter that closes as it decays, which
   // is most of what makes a line like this sound the way it does.
-  // Attack, body, release. What was here before was an attack straight into
-  // a decay, with the filter closing over the same span, so every note was a
-  // pluck however long it was told to last -- a long note was only a longer
-  // beep. A note now holds near its peak for the middle of its length before
-  // it lets go, and the filter stays open across that body instead of shutting
-  // the moment it is struck. A short note still falls away like a stab,
-  // because with little length there is little body to hold.
-  function pluck(t, midi, dur, kind, gain) {
+  // Everything melodic is registered here, because a note that has been
+  // scheduled is otherwise beyond reach: the web audio graph will play it
+  // whatever happens next, and what happens next may be that the fight it
+  // belonged to ended.
+  function keep(g, os, end) {
+    sounding.push({ g: g, os: os, end: end });
+    if (sounding.length > 128) {
+      var now = ctx.currentTime;
+      sounding = sounding.filter(function (v) { return v.end > now; });
+    }
+  }
+
+  // Silence, now. A round is over the moment the last of a side falls, and a
+  // run still ringing over the result is a fight carrying on after it has
+  // been decided. Everything scheduled goes with it, including the notes
+  // that had not started yet. The kit plays on: it is the clock, not the
+  // argument, and a round should not cost the track its pulse.
+  function cutAll() {
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    for (var i = 0; i < sounding.length; i++) {
+      var v = sounding[i];
+      try {
+        v.g.gain.cancelScheduledValues(t);
+        v.g.gain.setValueAtTime(Math.max(0.0001, v.g.gain.value), t);
+        v.g.gain.linearRampToValueAtTime(0.0001, t + 0.02);   // 20ms, so it does not click
+        for (var k = 0; k < v.os.length; k++) {
+          try { v.os[k].stop(t + 0.03); } catch (e) { /* already stopped */ }
+        }
+      } catch (e) { /* node already finished */ }
+    }
+    sounding = [];
+    pending = [];
+    live = [];
+    hanging = {};
+  }
+
+  // ── Six voices ────────────────────────────────────────────────────────
+  // A name picks a timbre the same way it picks a figure, so a program
+  // sounds like itself for as long as it is in the arena, and a champion
+  // that survives into the next round is recognisable before you have read
+  // its name. What separates these is mostly how they begin and how they let
+  // go rather than which waveform they run on: a bell is a bell because it
+  // is struck and then abandoned, and strings are strings because they are
+  // never struck at all.
+  //
+  // Attack, body, release, in all of them. What was here before was an
+  // attack of six milliseconds straight into a decay, with the lowpass
+  // closing over the same span, so every note was a pluck however long it
+  // was told to last and a long note was only a longer beep.
+  var VOICES = ["saw", "square", "sine", "strings", "piano", "bell"];
+
+  function cents(f, c) { return f * Math.pow(2, c / 1200); }
+
+  function pluck(t, midi, dur, kind, gain, voice) {
     var f0 = mtof(midi);
-    var o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
-    o.type = kind === "block" ? "square" : "sawtooth";
-    o.frequency.value = f0;
-    var atk = 0.006;
-    var rel = Math.min(0.3, dur * 0.35);
-    var body = Math.max(0.004, dur - atk - rel);
-    var sus = dur > 0.3 ? 0.8 : 0.4;               // a held note keeps its level; a stab does not
-    lp.type = "lowpass";
-    lp.Q.value = 9;
-    lp.frequency.setValueAtTime(Math.min(f0 * 7, 9000), t);
-    lp.frequency.exponentialRampToValueAtTime(Math.max(f0 * 2.4, 170), t + atk + body);
-    lp.frequency.exponentialRampToValueAtTime(Math.max(f0 * 1.3, 110), t + dur);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + atk);
-    g.gain.exponentialRampToValueAtTime(gain * sus, t + atk + body);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(lp); lp.connect(g); g.connect(master);
-    o.start(t); o.stop(t + dur + 0.02);
+    var g = ctx.createGain();
+    g.connect(notes);
+    var os = [], i;
+
+    if (voice === "strings") {
+      // Bowed: it arrives rather than starts. Three saws a few cents apart,
+      // so the pitch never quite settles, and the filter opens as it swells.
+      var atk = Math.min(0.2, dur * 0.5), rel = Math.min(0.55, dur * 0.55);
+      var lp = ctx.createBiquadFilter();
+      lp.type = "lowpass"; lp.Q.value = 0.9;
+      lp.frequency.setValueAtTime(Math.max(f0 * 1.8, 180), t);
+      lp.frequency.linearRampToValueAtTime(Math.min(f0 * 6, 5200), t + atk);
+      lp.connect(g);
+      for (i = 0; i < 3; i++) {
+        var so = ctx.createOscillator();
+        so.type = "sawtooth";
+        so.frequency.value = cents(f0, [-7, 0, 8][i]);
+        so.connect(lp); os.push(so);
+      }
+      var slvl = gain * 0.36;                     // three saws summed: a third each
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(slvl, t + atk);
+      g.gain.setValueAtTime(slvl, t + Math.max(atk, dur - rel));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + rel * 0.5);   // and a long tail
+
+    } else if (voice === "piano") {
+      // Struck and let go: three partials, the upper ones shorter, so the
+      // tone darkens as it falls away the way a struck string does.
+      var pg = [1, 0.4, 0.17], pd = [1, 0.55, 0.3];
+      for (i = 0; i < 3; i++) {
+        var po = ctx.createOscillator(), pgn = ctx.createGain();
+        po.type = i === 0 ? "triangle" : "sine";
+        po.frequency.value = f0 * (i + 1);
+        pgn.gain.setValueAtTime(0.0001, t);
+        pgn.gain.exponentialRampToValueAtTime(pg[i], t + 0.004);
+        pgn.gain.exponentialRampToValueAtTime(0.0001, t + dur * pd[i] + 0.05);
+        po.connect(pgn); pgn.connect(g); os.push(po);
+      }
+      g.gain.setValueAtTime(gain * 0.62, t);    // partials sum to about 1.6
+
+    } else if (voice === "bell") {
+      // Frequency modulation at an interval that belongs to no scale, which
+      // is what makes metal sound like metal. The modulation dies away
+      // faster than the note, so it rings clean after it has been hit.
+      var car = ctx.createOscillator(), mod = ctx.createOscillator();
+      var mg = ctx.createGain();
+      car.type = "sine"; car.frequency.value = f0;
+      mod.type = "sine"; mod.frequency.value = f0 * 3.47;     // inharmonic on purpose
+      mg.gain.setValueAtTime(f0 * 5, t);
+      mg.gain.exponentialRampToValueAtTime(f0 * 0.25, t + Math.min(0.5, dur * 0.7));
+      mod.connect(mg); mg.connect(car.frequency);
+      car.connect(g); os.push(car); os.push(mod);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain * 0.9, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
+
+    } else {
+      // The three simple ones: a saw to buzz, a square to sound hollow, a
+      // sine with nothing in it at all. A body between the attack and the
+      // release, and a filter that stays open across it instead of shutting
+      // the moment the note is struck.
+      var atk2 = 0.006, rel2 = Math.min(0.3, dur * 0.35);
+      var body = Math.max(0.004, dur - atk2 - rel2);
+      var sus = dur > 0.3 ? 0.8 : 0.4;              // a held note keeps its level; a stab does not
+      var o = ctx.createOscillator();
+      o.type = voice === "sine" ? "sine" : voice === "square" ? "square" : "sawtooth";
+      o.frequency.value = f0;
+      if (voice === "sine") {
+        o.connect(g);                               // nothing to filter out
+      } else {
+        var f = ctx.createBiquadFilter();
+        f.type = "lowpass"; f.Q.value = 9;
+        f.frequency.setValueAtTime(Math.min(f0 * 7, 9000), t);
+        f.frequency.exponentialRampToValueAtTime(Math.max(f0 * 2.4, 170), t + atk2 + body);
+        f.frequency.exponentialRampToValueAtTime(Math.max(f0 * 1.3, 110), t + dur);
+        o.connect(f); f.connect(g);
+      }
+      os.push(o);
+      var lvl = gain * (voice === "sine" ? 1.25 : 1);   // a sine carries less, so lift it
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(lvl, t + atk2);
+      g.gain.exponentialRampToValueAtTime(lvl * sus, t + atk2 + body);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    }
+
+    var off = t + dur + 0.6;
+    for (i = 0; i < os.length; i++) { os[i].start(t); os[i].stop(off); }
+    keep(g, os, off);
   }
 
   // Programs sit an octave above sentinels, so who is doing what is audible.
@@ -308,6 +426,7 @@
     for (var q = 0; q < 3; q++) holds.push(HOLDS[(h >>> (7 + q * 4)) % HOLDS.length]);
     var f = { n: LENGTHS[h % LENGTHS.length], cell: cell, gaps: gaps, holds: holds,
               sus: SUSTAIN[(h >>> 21) % SUSTAIN.length],
+              voice: VOICES[(h >>> 24) % VOICES.length],
               oct: OCTS[(h >>> 17) % OCTS.length] };
     figures[key] = f;
     return f;
@@ -341,7 +460,7 @@
       var hit = gain * (gap >= 3 ? 1.18 : 0.88) * (anchor ? 0.78 : 1);
       var up = (fig.oct && (i + 1) % fig.oct === 0) ? 12 : 0;
       var d = deg + lift + trans;
-      pluck(t, base + degree(d) + off + up, six * hold, e.kind, hit);
+      pluck(t, base + degree(d) + off + up, six * hold, e.kind, hit, fig.voice);
       t += six * gap;
     }
     live.push(t);
@@ -372,8 +491,9 @@
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(0.075, t + 0.006);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-    o.connect(lp); lp.connect(g); g.connect(master);
+    o.connect(lp); lp.connect(g); g.connect(notes);
     o.start(t); o.stop(t + 0.24);
+    keep(g, [o], t + 0.24);
   }
 
   // ── The clock ─────────────────────────────────────────────────────────
@@ -473,6 +593,12 @@
         master = ctx.createGain();
         master.gain.value = 0.55;
         master.connect(comp); comp.connect(ctx.destination);
+        // The runs go through a bus of their own, apart from the kit. It is
+        // where they can be balanced against the drums, and it is the one
+        // place that knows what counts as a note rather than a hit.
+        notes = ctx.createGain();
+        notes.gain.value = 1;
+        notes.connect(master);
         noise = makeNoise();
       }
       wake();
@@ -507,6 +633,7 @@
     // Called by the fight. Held until the next slot on the grid.
     play: function (kind, info) {
       if (!running || !ctx) return;
+      if (kind === "over") { cutAll(); return; }   // the last of a side is down
       if (kind === "hang") {
         hanging[info.name] = { name: info.name, team: info.team };
         return;

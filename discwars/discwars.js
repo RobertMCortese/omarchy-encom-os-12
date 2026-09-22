@@ -1640,6 +1640,10 @@
     var winner = 1 - fs[p].team;
     score[winner]++;
     banner = SIDE_NAME[winner] + " WIN";
+    // The round is decided here, not when the next one is set up a second
+    // and a half later. Anything still sounding belongs to a fight that has
+    // finished, so say so now rather than at "round".
+    emit("over", { team: winner });
     afterWall(settle + 1.4, newRound);             // let the last one finish falling
     return true;
   }
