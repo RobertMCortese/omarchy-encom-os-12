@@ -346,7 +346,7 @@
              name: "", champion: false, stats: blankStats(),
              // What has worked: pairs of throws that ended with a kill, and
              // the second half of one part-way through being played again.
-             combos: [], plan: null, prevAim: -1, practised: null };
+             combos: [], plan: null, prevAim: -1, practised: null, spared: false };
   }
 
   // A platform and its four rings. A fighter starts on its own and can end
@@ -540,7 +540,8 @@
     if (f.mode === "evade" || f.mode === "hit") {
       // Blend towards the dodge (or the knock-back) and out again.
       var kind = f.mode === "hit" ? "hit" : f.evade;
-      var eu = Math.min(1, f.mt / evadeTime[kind]);
+      var span = evadeTime[kind] * (kind === "hit" && f.champion ? CHAMP.stun : 1);
+      var eu = Math.min(1, f.mt / span);
       var ew = eu < 0.2 ? ease(eu / 0.2) : eu > 0.75 ? ease((1 - eu) / 0.25) : 1;
       var tg = evadePose(kind, pose, eu);
       for (var e2 = 0; e2 < pose.length; e2++) pose[e2] += (tg[e2] - pose[e2]) * ew;
@@ -1078,6 +1079,17 @@
   var HEIGHT = [1.55, 1.12, 0.45];       // where a high, body or low throw passes
   var CONNECT = 0.2;                     // a throw that gets through still has to land
 
+  // What a champion has that the others do not. Memory turned out to be no
+  // help at staying alive -- four versions of it measured flat -- because
+  // everything it improved was about attacking, and a reign ends when the
+  // champion is killed. These are all about not being killed instead.
+  var CHAMP = {
+    tough: 0.65,        // a throw that gets past its guard lands less often
+    spared: true,       // the first hit that would break it up only knocks it back
+    rings: 0.5,         // its broken rings come back in half the time
+    stun: 0.65          // and it is reeling for less of it afterwards
+  };
+
   function startBrains() {
     brains = (window.DiscWarsLearn)
       ? [new window.DiscWarsLearn.Side(NFEAT, 16), new window.DiscWarsLearn.Side(NFEAT, 16)]
@@ -1336,7 +1348,8 @@
       if (!call.through && Math.random() < 0.15) learnPair(fs[q], "save", call.aim, call.guard);
 
       var know = fs[p].practised;
-      if (call.through && Math.random() < CONNECT + edge(know && know.used, 0.18)) {
+      var hard = fs[q].champion ? CHAMP.tough : 1;          // champions are harder to catch
+      if (call.through && Math.random() < CONNECT * hard + edge(know && know.used, 0.18)) {
         // It found its mark: knocked back a ring and stunned, or derezzed.
         var hitAt = chestWorld(q);
         fly(p, arc(from, hitAt, rand(0.1, 0.4), viaZ),
@@ -1345,6 +1358,18 @@
           fs[p].stats.hits++;
           flyHome(p, hitAt);
           if (canAct(q) && Math.random() < 0.3) {
+            // A champion survives the first of these each round: it takes the
+            // hit, is thrown back, and is still standing where anybody else
+            // would have come apart. Once only, and then it is as breakable
+            // as the rest of them.
+            if (CHAMP.spared && fs[q].champion && !fs[q].spared) {
+              fs[q].spared = true;
+              spark(hitAt, "#ffffff");
+              emit("spared", { team: fs[q].team, name: fs[q].name });
+              if (canAct(q)) knockBack(q);
+              after(1.0, function () { rally(p); });
+              return;
+            }
             shatter(q);
             spark(hitAt, "#ffffff");
             emit("derez", { team: fs[q].team });
@@ -1594,6 +1619,7 @@
       f.move = null; f.clingRing = -1; f.willClimb = false; f.foe = -1;
       f.blockTarget = 0; f.block = 0;
       f.plan = null;                               // nothing half-played carries over
+      f.spared = false;                            // the free hit comes back each round
       setMode(i, "rez");
       f.yOff = 0; f.alpha = 0;
       play(i, "idle");
@@ -1622,11 +1648,15 @@
     }
     // Rings that have finished rising are simply up again, and one that has
     // been gone a while starts back on its own.
-    pads.forEach(function (pd) {
+    var champPad = -1;
+    for (var cp = 0; cp < fs.length; cp++)
+      if (fs[cp].champion && alive(cp)) { champPad = fs[cp].pad; break; }
+    pads.forEach(function (pd, pix) {
       var rs = pd.rings;
+      var back = pix === champPad ? ringBack * CHAMP.rings : ringBack;
       rs.forEach(function (r, k) {
         if (r.s === "rising" && wall - r.t > 0.9) rs[k] = { s: "up" };
-        else if (r.s === "falling" && wall - r.t > ringBack) rs[k] = { s: "rising", t: wall };
+        else if (r.s === "falling" && wall - r.t > back) rs[k] = { s: "rising", t: wall };
       });
     });
     // Keep as many exchanges going as the match should have.
