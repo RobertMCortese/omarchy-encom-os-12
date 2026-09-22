@@ -1169,6 +1169,8 @@
   // the last of its side: the round is over and the caller's exchange dies
   // with it, rather than being handed on.
   function eliminated(p, settle) {
+    // Called once per fighter per round, so it is what the tempo counts.
+    emit("out", { team: fs[p].team, left: liveCount(fs[p].team) });
     if (liveCount(fs[p].team) > 0) return false;   // its side fights on without it
     var winner = 1 - fs[p].team;
     score[winner]++;
@@ -1179,6 +1181,7 @@
 
   // Everyone back on their platform, every ring up, and the next round on.
   function newRound() {
+    emit("round", {});                             // everything back to the top
     for (var g = 0; g < pads.length; g++) restoreRings(g);
     for (var i = 0; i < fs.length; i++) {
       var f = fs[i];

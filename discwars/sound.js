@@ -20,9 +20,17 @@
 (function () {
   "use strict";
 
-  var BPM = 120;
-  var SPB = 60 / BPM;              // seconds per beat: 0.5
-  var STEP = SPB / 2;              // the grid everything snaps to: eighths
+  var BASE_BPM = 120;
+  var PER_LOSS = 10;               // every fighter out winds it up this much
+  var MAX_BPM = 200;
+  // The tempo is not fixed: each fighter knocked out of the round takes it up
+  // ten, and a new round drops it back. A 3v3 worn down to a win runs 120 to
+  // as much as 170, so the last exchanges are the fastest, and then it starts
+  // over. A change waits for the top of a bar rather than landing wherever
+  // the fight happens to put it -- stepping tempo mid-phrase smears the run
+  // that is already playing, and a bar line is where a tempo change belongs.
+  var bpm = BASE_BPM, wantBpm = BASE_BPM;
+  var STEP = 60 / BASE_BPM / 2;    // the grid everything snaps to: eighths
   var LOOKAHEAD = 0.12;            // seconds of audio scheduled in advance
   var TICK = 25;                   // ms between runs of the scheduler
   var MAX_VOICES = 5;              // runs in the air at once, before dropping
@@ -118,7 +126,11 @@
     var now = ctx.currentTime;
     while (live.length && live[0] < now) live.shift();
     while (stepTime < now + LOOKAHEAD) {
-      var eighth = step % 8;                       // two beats to the bar here
+      var eighth = step % 8;                       // eight eighths to the bar
+      if (eighth === 0 && wantBpm !== bpm) {       // tempo moves on the bar line
+        bpm = wantBpm;
+        STEP = 60 / bpm / 2;
+      }
       if (eighth % 2 === 0) {
         kick(stepTime);                            // every beat: the pulse
         var b = eighth / 2;
@@ -159,12 +171,12 @@
 
   window.DiscWarsSound = {
     get on() { return running; },
+    get bpm() { return bpm; },
     // Whether anything is actually coming out. A browser will not resume an
     // audio context except off a real click, and does not resume one in a
     // background tab at all, so wanting sound and having it are two
     // different questions and a control that conflates them lies.
     get live() { return running && !!ctx && ctx.state === "running"; },
-    bpm: BPM,
 
     start: function () {
       var AC = window.AudioContext || window.webkitAudioContext;
@@ -183,6 +195,8 @@
       }
       wake();
       step = 0;
+      bpm = wantBpm = BASE_BPM;
+      STEP = 60 / bpm / 2;
       stepTime = ctx.currentTime + 0.08;
       pending = []; live = [];
       running = true;
@@ -198,6 +212,13 @@
       if (timer) { clearInterval(timer); timer = null; }
       pending = [];
       if (ctx && ctx.state === "running") ctx.suspend();
+    },
+
+    // What the fight has done to the shape of the round, rather than a note:
+    // a fighter out winds the tempo up, a new round puts it back.
+    mark: function (kind) {
+      if (kind === "out") wantBpm = Math.min(MAX_BPM, wantBpm + PER_LOSS);
+      else if (kind === "round") wantBpm = BASE_BPM;
     },
 
     // Called by the fight. Held until the next slot on the grid.

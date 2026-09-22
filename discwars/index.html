@@ -261,9 +261,9 @@
 
 <script src="palette.js?v=e46f3c02"></script>
 <script src="learn.js?v=d1de0737"></script>
-<script src="sound.js?v=1a17b29e"></script>
+<script src="sound.js?v=179121cf"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=4eb003fa"></script>
+<script src="discwars.js?v=0386fd7b"></script>
 <script>
 (function () {
   "use strict";
@@ -491,11 +491,34 @@
   if (!soundReady) {
     soundBtn.hidden = true;
   } else {
-    DiscWars.on(function (kind, info) { DiscWarsSound.play(kind, info); });
+    DiscWars.on(function (kind, info) {
+      if (kind === "throw" || kind === "block") DiscWarsSound.play(kind, info);
+      else DiscWarsSound.mark(kind);            // a fighter out, or a new round
+    });
+    // The tempo rises with every fighter knocked out, so show where it is.
+    setInterval(function () {
+      if (!DiscWarsSound.on) return;
+      var want = "Sound \u00b7 " + DiscWarsSound.bpm;
+      if (soundBtn.textContent !== want) soundBtn.textContent = want;
+    }, 400);
+    // ?sound=1 asks for it without a click. A browser will usually still
+    // want one before letting any audio through, and the retry above takes
+    // care of that; it is here for a window started deliberately with the
+    // autoplay restriction lifted, which is how the desktop would run it.
+    if (/[?&]sound=1\b/.test(location.search)) {
+      setTimeout(function () {
+        if (!DiscWarsSound.on && DiscWarsSound.start()) {
+          soundBtn.setAttribute("aria-pressed", "true");
+          watchLive(0);
+        }
+      }, 300);
+    }
+
     soundBtn.addEventListener("click", function () {
       if (DiscWarsSound.on) {
         DiscWarsSound.stop();
         soundBtn.setAttribute("aria-pressed", "false");
+        soundBtn.textContent = "Sound";
         watchLive(0);
         return;
       }
