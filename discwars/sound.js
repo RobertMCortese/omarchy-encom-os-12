@@ -38,6 +38,7 @@
   // seconds and a fighter throws oftener than that, so the same program was
   // laying figures over its own.
   var voiceUntil = [0, 0];
+  var fighting = false;            // between the deciding fall and the next round
 
   var ctx = null, master = null, notes = null, comp = null, noise = null;
   var sounding = [];               // every melodic voice currently ringing
@@ -183,9 +184,20 @@
       } catch (e) { /* node already finished */ }
     }
     sounding = [];
-    pending = [];
     voiceUntil = [0, 0];
     hanging = {};
+    // The kit is not part of the argument, and a hit that has already landed
+    // still sounds. Emptying the queue here took the deciding blow's own
+    // cymbal with it: a derez is queued for its slot on the grid, and the
+    // round ends before that slot comes round, so the one derez in a round
+    // that anybody is actually waiting to hear was the one that never played.
+    // Kit events stay; a block keeps its tom and loses only its line.
+    var rest = [];
+    for (var j = 0; j < pending.length; j++) {
+      if (pending[j].kind === "throw") continue;  // a throw is nothing but a line
+      rest.push(pending[j]);
+    }
+    pending = rest;
   }
 
   // ── Six voices ────────────────────────────────────────────────────────
@@ -570,7 +582,7 @@
           // others do still lands on the kit -- the drums are the arena, not
           // anybody's part -- so a fight with six in it still sounds like a
           // fight with six in it, while only two of them carry a line.
-          if (e.lead && stepTime >= voiceUntil[e.team]) {
+          if (e.lead && fighting && stepTime >= voiceUntil[e.team]) {
             if (e.kind === "throw") stepKey();     // a block stays in the key it answers
             run(stepTime, e);
           }
@@ -650,6 +662,7 @@
       STEP = 60 / bpm / 2;
       stepTime = ctx.currentTime + 0.08;
       pending = []; voiceUntil = [0, 0]; hanging = {}; hangN = 0;
+      fighting = true;              // the first round counts too
       trans = 0; transStep = 0;
       running = true;
       watchForPermission();
@@ -676,8 +689,9 @@
     // Called by the fight. Held until the next slot on the grid.
     play: function (kind, info) {
       if (!running || !ctx) return;
-      if (kind === "over") { cutAll(); return; }   // the last of a side is down
+      if (kind === "over") { fighting = false; cutAll(); return; }  // the last of a side is down
       if (kind === "hang") {
+        if (!fighting) return;                     // the round is decided; nothing more is said
         if (!info.lead) return;                    // only a side's own voice is heard hanging
         hanging[info.name] = { name: info.name, team: info.team };
         return;
@@ -685,6 +699,7 @@
       if (kind === "unhang") { delete hanging[info.name]; return; }
       if (kind === "round") {                       // nobody hanging, back to the root
         hanging = {}; trans = 0; transStep = 0;
+        fighting = true;
         return;
       }
       pending.push({ kind: kind, team: (info && info.team) || 0,
