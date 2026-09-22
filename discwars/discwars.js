@@ -1276,16 +1276,25 @@
   function newRound() {
     emit("round", {});                             // everything back to the top
 
-    // One fighter goes through to the next round, and only one: whoever is
-    // still standing with the most to show for it. Everybody else is a new
-    // program with a new name and nothing to their name yet, so a champion
-    // is the only thing in the arena that accumulates -- and the only one
-    // with anything to lose.
+    // One fighter goes through to the next round, and only one. A champion
+    // that is still standing keeps the place however the points fell: the
+    // title is held until somebody takes it off them, not lent out again
+    // every round to whoever had the best few minutes. Only when the
+    // champion has gone does it pass, and then to whichever survivor has
+    // most to show for the round. Everybody else is a new program with a
+    // new name and nothing to their name yet, so a champion is the only
+    // thing in the arena that accumulates -- and the only one with anything
+    // to lose.
     var champ = -1, best = -1;
-    for (var c = 0; c < fs.length; c++) {
-      if (!alive(c)) continue;
-      var pts = tally(fs[c]);
-      if (pts > best) { best = pts; champ = c; }
+    for (var h = 0; h < fs.length; h++) {
+      if (fs[h].champion && alive(h)) { champ = h; break; }   // still standing: still champion
+    }
+    if (champ < 0) {
+      for (var c = 0; c < fs.length; c++) {
+        if (!alive(c)) continue;
+        var pts = tally(fs[c]);
+        if (pts > best) { best = pts; champ = c; }
+      }
     }
     if (champ >= 0) fs[champ].stats.rounds++;
 
