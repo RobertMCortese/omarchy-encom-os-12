@@ -793,7 +793,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
+    def is_local_origin(self):
+        # Defends against DNS rebinding: a remote page can make a browser
+        # send a request to our loopback port, but it cannot forge the
+        # Host header to a value the browser itself resolved to us.
+        host = self.headers.get("Host", "").split(":", 1)[0]
+        return host in ("127.0.0.1", "localhost", "::1")
+
     def do_GET(self):
+        if not self.is_local_origin():
+            return self.send_error(403)
         path = self.path.split("?", 1)[0]
         if path == "/events.js":
             return self.stream()
@@ -875,6 +884,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
+        if not self.is_local_origin():
+            return self.send_error(403)
         if self.path == "/dismiss":
             DISMISSED.set()
             self.send_response(204)
