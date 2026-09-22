@@ -116,6 +116,37 @@
     font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase;
     color: var(--chrome-dim);
   }
+  /* What the two policies have come to: how often each side aims high, at
+     the body or low, and how often it answers with each guard. Diagnostic
+     rather than scene, so it lives with the chrome and goes as a screensaver. */
+  .brains {
+    display: grid; grid-template-columns: auto repeat(2, auto); gap: 4px 18px;
+    align-items: center; font-size: 9px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--chrome-dim);
+  }
+  .brains .who { text-align: right; letter-spacing: 0.2em; }
+  .brains .who.a { color: var(--side-a); }
+  .brains .who.b { color: var(--side-b); }
+  .brains .mix { display: flex; align-items: center; gap: 5px; }
+  .brains .mix.a { color: var(--side-a); }
+  .brains .mix.b { color: var(--side-b); }
+  .brains .mix em { font-style: normal; opacity: 0.5; }
+  /* The faded track and the lit fill are siblings, not one inside the
+     other: opacity applies to a whole subtree, so a fill nested in a faded
+     track can never be brighter than it. A bar also has to be told to be a
+     box at all, since <i> is inline by default. */
+  .brains .bar {
+    display: inline-block; position: relative;
+    width: 26px; height: 3px; vertical-align: middle;
+  }
+  .brains .track, .brains .fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: currentColor;
+  }
+  .brains .track { right: 0; opacity: 0.2; }
+  .brains .head { font-size: 8px; letter-spacing: 0.22em; opacity: 0.5; }
+  @media (max-width: 620px) { .brains { display: none; } }
+
   .credit {
     font-size: 9px; letter-spacing: 0.04em; color: var(--chrome-dim);
     text-align: center; max-width: 86ch; line-height: 1.7; margin: 0;
@@ -147,7 +178,38 @@
   @media (max-width: 560px) {
     .ident .brand { font-size: 10px; letter-spacing: 0.24em; }
     .palette, .size { padding: 5px 8px; font-size: 9px; letter-spacing: 0.12em; }
-    .credit { font-size: 8.5px; }
+    /* What the two policies have come to: how often each side aims high, at
+     the body or low, and how often it answers with each guard. Diagnostic
+     rather than scene, so it lives with the chrome and goes as a screensaver. */
+  .brains {
+    display: grid; grid-template-columns: auto repeat(2, auto); gap: 4px 18px;
+    align-items: center; font-size: 9px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--chrome-dim);
+  }
+  .brains .who { text-align: right; letter-spacing: 0.2em; }
+  .brains .who.a { color: var(--side-a); }
+  .brains .who.b { color: var(--side-b); }
+  .brains .mix { display: flex; align-items: center; gap: 5px; }
+  .brains .mix.a { color: var(--side-a); }
+  .brains .mix.b { color: var(--side-b); }
+  .brains .mix em { font-style: normal; opacity: 0.5; }
+  /* The faded track and the lit fill are siblings, not one inside the
+     other: opacity applies to a whole subtree, so a fill nested in a faded
+     track can never be brighter than it. A bar also has to be told to be a
+     box at all, since <i> is inline by default. */
+  .brains .bar {
+    display: inline-block; position: relative;
+    width: 26px; height: 3px; vertical-align: middle;
+  }
+  .brains .track, .brains .fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: currentColor;
+  }
+  .brains .track { right: 0; opacity: 0.2; }
+  .brains .head { font-size: 8px; letter-spacing: 0.22em; opacity: 0.5; }
+  @media (max-width: 620px) { .brains { display: none; } }
+
+  .credit { font-size: 8.5px; }
   }
 </style>
 </head>
@@ -173,6 +235,7 @@
     </div>
 
     <div class="foot">
+      <div class="brains" id="brains" hidden></div>
       <div class="sizes" id="sizes" role="group" aria-label="Match size"></div>
       <div class="palettes" id="palettes" role="group" aria-label="Colour scheme"></div>
       <p class="hint">Click the arena to hold it</p>
@@ -191,8 +254,9 @@
 </div>
 
 <script src="palette.js?v=e46f3c02"></script>
+<script src="learn.js?v=d1de0737"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=fa0213ae"></script>
+<script src="discwars.js?v=b5a98201"></script>
 <script>
 (function () {
   "use strict";
@@ -320,8 +384,8 @@
       sizeChips[k].setAttribute("aria-pressed", String(Number(k) === n));
     });
     DiscWars.setTeams(n);
-    boardKey = null;
-    drawBoard();
+    boardKey = null; brainsKey = null;
+    drawBoard(); drawBrains();
     try { localStorage.setItem("discwars.teams", String(n)); } catch (e) { /* fine */ }
   }
 
@@ -360,7 +424,42 @@
       pips(1) + '<span class="side b">' + st.sides[1] + "</span>" +
       (st.banner ? '<div class="banner">' + st.banner + "</div>" : "");
   }
+  // ── What the sides have learned ───────────────────────────────────────
+  var brainsBox = document.getElementById("brains");
+  var brainsKey = null;
+  var AIM_LABELS = ["HI", "MID", "LO"];
+  var GUARD_LABELS = ["DUCK", "BLOCK", "JUMP"];
+
+  function mixRow(side, labels, mix) {
+    return '<div class="mix ' + side + '">' + mix.map(function (v, i) {
+      return "<em>" + labels[i] + '</em><i class="bar"><b class="track"></b>' +
+             '<b class="fill" style="width:' +
+             Math.round(Math.max(0, Math.min(1, v)) * 100) + '%"></b></i>';
+    }).join("") + "</div>";
+  }
+
+  function drawBrains() {
+    if (typeof DiscWars.state !== "function") return;
+    var L = DiscWars.state().learning;
+    if (!L) { brainsBox.hidden = true; return; }      // played blind
+    brainsBox.hidden = false;
+    var key = L.map(function (b) {
+      return b.aims.concat(b.guards).map(function (v) { return v.toFixed(2); }).join(",");
+    }).join("|");
+    if (key === brainsKey) return;
+    brainsKey = key;
+    var rows = '<div class="head"></div><div class="head">Aims at</div><div class="head">Answers with</div>';
+    L.forEach(function (b, t) {
+      rows += '<div class="who ' + (t === 0 ? "a" : "b") + '">' +
+              (t === 0 ? "PROGRAMS" : "SENTINELS") + "</div>" +
+              mixRow(t === 0 ? "a" : "b", AIM_LABELS, b.aims) +
+              mixRow(t === 0 ? "a" : "b", GUARD_LABELS, b.guards);
+    });
+    brainsBox.innerHTML = rows;
+  }
+
   setInterval(drawBoard, 250);
+  setInterval(drawBrains, 600);
 
   var still = window.matchMedia("(prefers-reduced-motion: reduce)");
   if (still.matches) {

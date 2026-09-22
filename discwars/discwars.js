@@ -272,13 +272,15 @@
              clingAt: null, willClimb: false, dropFrom: null, clip: "idle", t: rand(0, 1),
              speed: 1, from: null, blend: 1, block: 0, blockTarget: 0, pose: null,
              mode: "stand", mt: 0, yOff: 0, alpha: 1, flip: "side", flipSide: 1,
-             high: false, grip: "right", evade: "duck" };
+             high: false, grip: "right", evade: "duck",
+             lastAim: -1, lastGuard: -1 };
   }
 
   // A platform and its four rings. A fighter starts on its own and can end
   // up on a teammate's, so the two are kept apart.
   var pads = [];
   var fs = [], ds = [], ringCircles = [];
+
 
   // Lay out a match: two ranks of `n` facing each other across the arena,
   // each fighter on its own platform with its own four rings.
@@ -305,6 +307,7 @@
         ringRadii[k].forEach(function (r) { if (r > 0) ringCircles.push([g, k, r]); });
     queue = []; wallQueue = []; pieces = []; chains = 0;
     score = [0, 0]; banner = "";
+    startBrains();                       // a different match is a different game
     sparkData = [null, null, null, null];
     rebuildLines();
   }
@@ -811,6 +814,56 @@
     pieces = live;
   }
 
+  // ── Reading the throw ─────────────────────────────────────────────────
+  // A throw is aimed high, at the body or low, and each guard answers one
+  // of the three: duck a high one, block a body one on the disc, jump a low
+  // one. So neither side has a move worth settling on, and the only edge to
+  // be had is in reading the other -- which is what the two policies in
+  // learn.js are for. Without that file this falls back to choosing at
+  // random, which is the game played blind, and still plays.
+  var NFEAT = 12;
+  var brains = null;
+  var HEIGHT = [1.55, 1.12, 0.45];       // where a high, body or low throw passes
+  var CONNECT = 0.2;                     // a throw that gets through still has to land
+
+  function startBrains() {
+    brains = (window.DiscWarsLearn)
+      ? [new window.DiscWarsLearn.Side(NFEAT, 16), new window.DiscWarsLearn.Side(NFEAT, 16)]
+      : null;
+  }
+
+  // What both policies see: the shape of this exchange, and what this
+  // defender did the last time it was thrown at -- the tell an attacker has
+  // to read, and the habit a defender has to avoid falling into.
+  function situation(att, def) {
+    var a = fs[att], d = fs[def];
+    return [
+      1,
+      discHome(def) ? 1 : 0,
+      d.ring / (ringCount - 1),
+      a.ring / (ringCount - 1),
+      d.lastAim === 0 ? 1 : 0, d.lastAim === 1 ? 1 : 0, d.lastAim === 2 ? 1 : 0,
+      d.lastGuard === 0 ? 1 : 0, d.lastGuard === 1 ? 1 : 0, d.lastGuard === 2 ? 1 : 0,
+      (liveCount(a.team) - liveCount(d.team)) / teamSize,
+      teamSize / 3
+    ];
+  }
+
+  function readThrow(att, def, canBlock) {
+    if (!brains) {
+      var aim = Math.floor(Math.random() * 3);
+      var guards = canBlock ? [0, 1, 2] : [0, 2];
+      var guard = guards[Math.floor(Math.random() * guards.length)];
+      return { aim: aim, guard: guard, through: guard !== aim };
+    }
+    var x = situation(att, def);
+    var d = window.DiscWarsLearn.decide(brains[fs[att].team], brains[fs[def].team], x, canBlock);
+    window.DiscWarsLearn.settle(brains[fs[att].team], brains[fs[def].team], x, d);
+    fs[def].lastAim = d.aim;
+    fs[def].lastGuard = d.guard;
+    return d;
+  }
+
   // ── The duel ──────────────────────────────────────────────────────────
   var queue = [];
   function after(delay, fn) { queue.push({ at: now + delay, fn: fn }); }
@@ -910,35 +963,18 @@
     });
   }
 
-  // A throw at the body. Now and then it connects; otherwise it is blocked
-  // on the shield, or dodged: a sidestep or a flip carries the defender to
-  // another ring; a duck or a sweep kick lets it pass over, a split jump
-  // lets it pass under.
+  // A throw at the body, aimed high, at the chest or low. The defender
+  // answers with one of the three guards; if it picks the one that covers
+  // that aim the disc comes off it, and if it picks wrong the disc goes
+  // past -- and now and then finds its mark.
   function bodyShot(p, q) {
     throwFrom(p, function (from) {
       var canBlock = discHome(q) && canAct(q);
-      var r = Math.random();
-      if (canAct(q) && r < 0.12) {
-        // A hit: knocked back a ring and stunned.
-        var hitAt = chestWorld(q);
-        fly(p, [from, lerp3(from, hitAt, 0.5).map(function (v, i) { return i === 1 ? v + rand(0.1, 0.4) : v; }), hitAt],
-            rand(0.85, 1.05), function () {
-          spark(hitAt, hot(p));
-          flyHome(p, hitAt);
-          if (canAct(q) && Math.random() < 0.3) {
-            // Derezzed: the outline breaks apart and falls; a new round.
-            shatter(q);
-            spark(hitAt, "#ffffff");
-            setMode(q, "derez");
-            if (!eliminated(q, 3.0)) after(rand(0.9, 1.3), function () { rally(p); });
-            return;
-          }
-          if (canAct(q)) knockBack(q);
-          after(1.0, function () { rally(p); });
-        });
-        return;
-      }
-      if (canBlock && r < 0.55) {
+      var call = readThrow(p, q, canBlock);
+      var pass = HEIGHT[call.aim] + rand(-0.08, 0.08);
+
+      if (!call.through && call.guard === 1) {
+        // Caught on the disc, held up across the chest.
         var to = ahead(q, chestWorld(q), 0.6);
         to[1] += 0.05;
         var dur = rand(0.85, 1.05), mid = lerp3(from, to, 0.5);
@@ -951,11 +987,38 @@
         });
         return;
       }
-      // Dodged: the disc flies on to the glass behind and ricochets home, at
-      // a height to suit the dodge: over a duck or a sweep, under a split.
-      var d = Math.random();
-      var kind = d < 0.25 ? "sidestep" : d < 0.5 ? "flip" : d < 0.67 ? "duck" : d < 0.83 ? "sweep" : "split";
-      var pass = kind === "duck" || kind === "sweep" ? 1.55 : kind === "split" ? 0.45 : rand(1.0, 1.6);
+
+      if (call.through && Math.random() < CONNECT) {
+        // It found its mark: knocked back a ring and stunned, or derezzed.
+        var hitAt = chestWorld(q);
+        fly(p, [from, lerp3(from, hitAt, 0.5).map(function (v, i) { return i === 1 ? v + rand(0.1, 0.4) : v; }), hitAt],
+            rand(0.85, 1.05), function () {
+          spark(hitAt, hot(p));
+          flyHome(p, hitAt);
+          if (canAct(q) && Math.random() < 0.3) {
+            shatter(q);
+            spark(hitAt, "#ffffff");
+            setMode(q, "derez");
+            if (!eliminated(q, 3.0)) after(rand(0.9, 1.3), function () { rally(p); });
+            return;
+          }
+          if (canAct(q)) knockBack(q);
+          after(1.0, function () { rally(p); });
+        });
+        return;
+      }
+
+      // Either the guard covered it and the disc goes by, or the guard was
+      // wrong and it goes by anyway: on to the glass behind, and home.
+      // The move shown is the one the defender actually chose -- a duck or
+      // a sweep kick under a high throw, a split jump over a low one -- and
+      // where there is somewhere to go it may instead step or flip clear,
+      // which is what carries a fighter onto a fallen teammate's rings.
+      var lateral = call.guard !== 1 && Math.random() < 0.45 && dodgeSpot(q);
+      var kind = lateral ? (Math.random() < 0.5 ? "sidestep" : "flip")
+               : call.guard === 0 ? (Math.random() < 0.5 ? "duck" : "sweep")
+               : call.guard === 2 ? "split"
+               : "duck";                                   // blocked with the disc away
       var qp = pads[fs[q].pad];
       var glass = [qp.cx > 0 ? 15.8 : -15.8, pass, qp.cz + rand(-1.0, 1.0)];
       var dur2 = rand(1.25, 1.4);
@@ -963,7 +1026,7 @@
       var lead = kind === "flip" ? 0.45 : kind === "sidestep" ? 0.4 : 0.45 * evadeTime[kind];
       after(Math.max(0, dur2 * passAt - lead), function () {
         if (!canAct(q)) return;
-        var spot = dodgeSpot(q);
+        var spot = lateral ? dodgeSpot(q) : null;
         if (kind === "flip") {
           startFlip(q);
           if (spot) relocate(q, spot[0], spot[1], spot[2], flipTime, 0);
@@ -1325,7 +1388,13 @@
         score: score.slice(),
         banner: banner,
         sides: SIDE_NAME.slice(),
-        fighters: fs.map(function (f, i) { return { team: f.team, alive: alive(i) }; })
+        fighters: fs.map(function (f, i) { return { team: f.team, alive: alive(i) }; }),
+        // What the two policies have come to, for the readout. Null when
+        // learn.js is not loaded and the fight is being played blind.
+        learning: brains && brains.map(function (b) {
+          return { throws: b.throws, through: b.recent,
+                   aims: b.aimMix.slice(), guards: b.guardMix.slice() };
+        })
       };
     },
     init: function (el, n) {
