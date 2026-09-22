@@ -124,17 +124,48 @@
     return SCALE[i] + 12 * oct;
   }
 
-  function run(t0, e) {
-    var beats = e.kind === "block" ? 4 : 2;        // a measure, or half of one
-    var n = beats * 2;                             // in eighths
-    var base = ROOT + (e.team === 0 ? 12 : 0);
-    var from = AIM_STEP[e.aim] || 0;
-    var dir = e.kind === "block" ? -1 : 1;         // blocks come back down
-    var gain = e.kind === "block" ? 0.16 : 0.13;
-    for (var i = 0; i < n; i++) {
-      pluck(t0 + i * STEP, base + degree(from + dir * i), STEP * 0.85, e.kind, gain);
+  // ── A fighter's figure ────────────────────────────────────────────────
+  // Every run is an odd number of notes -- 7, 9, 11 or 13 -- played three,
+  // a breath, then the rest. Which length, and the shape of the walk through
+  // the scale, come from the fighter's own name, so GREP throws the same
+  // figure every time and a name that comes back in a later round brings its
+  // sound with it. Nothing is stored: the name is hashed and the figure
+  // falls out of the bits, so the same name always gives the same phrase.
+  var LENGTHS = [7, 9, 11, 13];
+  var MOVES = [1, 1, 2, -1, 1, 2, -2, 3];          // degree steps to choose between
+  var figures = {};
+
+  function figure(name) {
+    var key = name || "";
+    if (figures[key]) return figures[key];
+    var h = 2166136261;
+    for (var i = 0; i < key.length; i++) {
+      h ^= key.charCodeAt(i);
+      h = Math.imul(h, 16777619);
     }
-    live.push(t0 + n * STEP);
+    h = h >>> 0;
+    var cell = [];
+    for (var k = 0; k < 3; k++) cell.push(MOVES[(h >>> (5 + k * 3)) % MOVES.length]);
+    var f = { n: LENGTHS[h % LENGTHS.length], cell: cell };
+    figures[key] = f;
+    return f;
+  }
+
+  function run(t0, e) {
+    var fig = figure(e.name);
+    var six = STEP / 2;                            // sixteenths, so even 13 fits a bar
+    var base = ROOT + (e.team === 0 ? 12 : 0);
+    var dir = e.kind === "block" ? -1 : 1;         // blocks come back down
+    var gain = e.kind === "block" ? 0.15 : 0.12;
+    var d = AIM_STEP[e.aim] || 0;
+    var t = t0;
+    for (var i = 0; i < fig.n; i++) {
+      if (i === 3) t += six;                       // three, a breath, then the rest
+      pluck(t, base + degree(d), six * 0.85, e.kind, gain);
+      d += dir * fig.cell[i % 3];
+      t += six;
+    }
+    live.push(t);
   }
 
   // ── The clock ─────────────────────────────────────────────────────────
@@ -241,7 +272,8 @@
     play: function (kind, info) {
       if (!running || !ctx) return;
       pending.push({ kind: kind, team: (info && info.team) || 0,
-                     aim: info && info.aim != null ? info.aim : 1 });
+                     aim: info && info.aim != null ? info.aim : 1,
+                     name: (info && info.name) || "" });   // whose figure to play
     }
   };
 })();

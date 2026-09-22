@@ -974,7 +974,7 @@
       if (canAct(p)) {
         launch(handWorld(p));                 // a body shot picks its aim in here
         fs[p].stats.throws++;
-        emit("throw", { team: fs[p].team, aim: fs[p].lastThrowAim });
+        emit("throw", { team: fs[p].team, aim: fs[p].lastThrowAim, name: fs[p].name });
         return;
       }
       ds[p].state = "back";                           // lost its footing mid-throw
@@ -1072,7 +1072,7 @@
         fly(p, [from, [mid[0], mid[1] + rand(0.1, 0.6), mid[2] + rand(-1.4, 1.4)], to], dur, function () {
           spark(to, hot(p));
           fs[q].stats.blocks++;
-          emit("block", { team: fs[q].team, aim: call.aim });
+          emit("block", { team: fs[q].team, aim: call.aim, name: fs[q].name });
           lowerShield(q);
           flyHome(p, to);
           after(rand(0.25, 0.45), function () { rally(q); });
