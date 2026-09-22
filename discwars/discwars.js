@@ -420,6 +420,20 @@
   }
   function speaks(p) { return voiceOf(fs[p].team) === p; }
 
+  // The sentinels' line runs whether or not they are throwing, so the sound
+  // has to be told who is speaking for a side rather than waiting to be told
+  // by a throw. Still derived, never stored -- this only remembers what it
+  // last said, so it can say something when the answer changes.
+  var lastVoice = [-1, -1];
+  function announceVoices() {
+    for (var t = 0; t < 2; t++) {
+      var v = voiceOf(t);
+      if (v === lastVoice[t]) continue;
+      lastVoice[t] = v;
+      emit("lead", { team: t, name: v >= 0 ? fs[v].name : "" });
+    }
+  }
+
   function newFighter(team, home, fv) {
     var pd = pads[home];
     return { team: team, home: home, pad: home, foe: -1,
@@ -1725,6 +1739,7 @@
     }
     // Anything still queued belongs to the round that just ended.
     queue = []; wallQueue = [];
+    lastVoice = [-1, -1];                          // new programs, new voices
     banner = "";
     for (var j = 0; j < teamSize; j++) afterWall(1.2 + j * 0.35, startChain);
   }
@@ -1757,6 +1772,7 @@
         else if (r.s === "falling" && wall - r.t > back) rs[k] = { s: "rising", t: wall };
       });
     });
+    announceVoices();                            // who carries each side's line
     // Keep as many exchanges going as the match should have.
     if (wall - lastChainCheck > 0.4) {
       lastChainCheck = wall;
