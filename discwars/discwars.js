@@ -381,7 +381,7 @@
     for (var g = 0; g < pads.length; g++)
       for (var k = 0; k < ringCount; k++)
         ringRadii[k].forEach(function (r) { if (r > 0) ringCircles.push([g, k, r]); });
-    queue = []; wallQueue = []; pieces = []; chains = 0;
+    queue = []; wallQueue = []; pieces = [];
     score = [0, 0]; banner = "";
     startBrains();                       // a different match is a different game
     sparkData = [null, null, null, null];
@@ -1431,10 +1431,23 @@
     return live[Math.floor(Math.random() * live.length)];
   }
 
-  // How many exchanges are running at once. Each one is a chain: an attack,
-  // and on the way out another attack from whoever it left standing. There
-  // is one chain per fighter per side, so a 3v3 keeps three duels going.
-  var chains = 0;
+  // How many exchanges are running at once. This used to be a counter kept
+  // by hand -- one up when an exchange began, one down when it ended -- and
+  // it was wrong twice, both times upward, both times silently. An exchange
+  // that ended without saying so left the count high, the arena believed
+  // itself busier than it was, and fighters stood about with nothing to do
+  // while the count said otherwise. That is what made the ends of rounds
+  // turn into taking turns.
+  //
+  // So it is not counted any more, it is looked at: an exchange is a fighter
+  // winding up a throw or with its disc in the air, and that cannot drift
+  // from the truth because it is read off the truth.
+  function engaged() {
+    var n = 0;
+    for (var i = 0; i < fs.length; i++)
+      if (alive(i) && (ds[i].state === "flight" || fs[i].clip === "throw")) n++;
+    return n;
+  }
   // Fighters on a side that could take an exchange this instant.
   function ready(team) {
     var out = [];
@@ -1446,7 +1459,6 @@
   function startChain() {
     var idle = ready(0).concat(ready(1));
     if (!idle.length) return false;
-    chains++;
     rally(idle[Math.floor(Math.random() * idle.length)]);
     return true;
   }
@@ -1458,11 +1470,11 @@
       var mates = [];
       for (var i = 0; i < fs.length; i++)
         if (fs[i].team === fs[p].team && alive(i)) mates.push(i);
-      if (!mates.length) { chains = Math.max(0, chains - 1); return; }
+      if (!mates.length) return;                  // its whole side has gone
       p = mates[Math.floor(Math.random() * mates.length)];
     }
     var q = pickFoe(p);
-    if (q < 0) { chains = Math.max(0, chains - 1); return; }
+    if (q < 0) return;                             // nobody left to throw at
     fs[p].foe = q;
     if (!canAct(p) || !discHome(p)) {
       // It cannot throw just now -- mid-flip, still waiting on its disc.
@@ -1588,7 +1600,7 @@
       ds[i] = { state: "back", pos: [0, 0, 0], trail: [], flight: null };
     }
     // Anything still queued belongs to the round that just ended.
-    queue = []; wallQueue = []; chains = 0;
+    queue = []; wallQueue = [];
     banner = "";
     for (var j = 0; j < teamSize; j++) afterWall(1.2 + j * 0.35, startChain);
   }
@@ -1618,7 +1630,7 @@
       });
     });
     // Keep as many exchanges going as the match should have.
-    if (wall - lastChainCheck > 1.2) {
+    if (wall - lastChainCheck > 0.4) {
       lastChainCheck = wall;
       // As the round wears on there are fewer fighters to carry exchanges,
       // so ask for no more than the thinner side can still put up.
@@ -1630,12 +1642,10 @@
       // being outnumbered looks like it.
       var a = liveCount(0), b = liveCount(1);
       var want = (a > 0 && b > 0) ? Math.min(teamSize, Math.max(a, b)) : 0;
-      // `chains` is a count of exchanges believed to be running, and a bug
-      // that loses one without saying so leaves the arena quiet for good. If
-      // nothing has been thrown for a while and both sides still have
-      // fighters, stop believing the count and start again.
-      if (want > 0 && wall - lastThrow > 7) chains = 0;
-      while (chains < want && startChain()) { /* fill every slot */ }
+      // One at a time, several times a second: it climbs to where it should
+      // be within a second and cannot run away, since starting one needs a
+      // fighter standing idle with its disc in hand.
+      if (engaged() < want) startChain();
     }
     aimCamera(realDt);
 
