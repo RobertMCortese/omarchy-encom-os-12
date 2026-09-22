@@ -432,7 +432,16 @@
     f.from = f.pose ? f.pose.slice() : null;
     f.blend = 0; f.clip = name; f.t = 0; f.speed = speed || 1;
   }
-  function setMode(p, m) { fs[p].mode = m; fs[p].mt = 0; }
+  // Every change of mode goes through here, so it is also where hanging from
+  // a ring edge is announced: the sequencer holds a note for as long as a
+  // fighter is on the edge, and needs to know the moment it stops being.
+  function setMode(p, m) {
+    var was = fs[p].mode;
+    fs[p].mode = m; fs[p].mt = 0;
+    if (was === m) return;
+    if (was === "cling") emit("unhang", { name: fs[p].name, team: fs[p].team });
+    if (m === "cling") emit("hang", { name: fs[p].name, team: fs[p].team });
+  }
 
   var flipTime = 1.1;                            // fight seconds
   // Dodges in place, and being hit (fight seconds).

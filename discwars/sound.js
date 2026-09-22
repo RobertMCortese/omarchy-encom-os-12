@@ -173,6 +173,19 @@
   var SCALE = [0, 2, 3, 5, 8, 10];                 // D# E# F# G# B C#
   var AIM_STEP = [4, 2, 0];                        // high, body, low: which degree to start on
 
+  // Where each side's notes are allowed to sit. A run walks as far as its
+  // figure takes it, and a long one walks a long way -- a thirteen-note
+  // block descending from D#1 ended up under 5 Hz, which is ten of its
+  // thirteen notes spent below anything anyone can hear. Folding by octaves
+  // keeps the shape of the line and puts it back in the room.
+  var RANGE = [[45, 78], [31, 64]];                // programs, sentinels
+  function fold(m, team) {
+    var r = RANGE[team] || RANGE[1];
+    while (m < r[0]) m += 12;
+    while (m > r[1]) m -= 12;
+    return m;
+  }
+
   // Degree d of the scale, carrying on into the octave above as it runs out.
   function degree(d) {
     var n = SCALE.length;
@@ -241,11 +254,40 @@
       // beat every time.
       var hit = gain * (gap >= 2 ? 1.18 : 0.88);
       var up = (fig.oct && (i + 1) % fig.oct === 0) ? 12 : 0;
-      pluck(t, base + degree(d) + up, six * hold, e.kind, hit);
+      pluck(t, fold(base + degree(d), e.team) + up, six * hold, e.kind, hit);
       d += dir * fig.cell[i % fig.cell.length];
       t += six * gap;
     }
     live.push(t);
+  }
+
+  // ── Hanging on ────────────────────────────────────────────────────────
+  // A fighter over the edge holds on until it climbs back or is finished
+  // off, and for as long as it does its figure's first note is arpeggiated
+  // underneath everything: the note, its octave, and the degree between
+  // them, quietly, once an eighth. It is the one sound in the arena that is
+  // held rather than struck, so it reads as somebody still out there.
+  var hanging = {};
+  var hangN = 0;
+
+  function hangNote(t, who, k) {
+    var fig = figure(who.name);
+    var start = AIM_STEP[1];                        // where its figure begins
+    var step3 = [0, 3, 6][k % 3];                   // the note, a third up, its octave
+    var base = ROOT + (who.team === 0 ? 12 : 0);
+    var m = fold(base + degree(start + step3), who.team);
+    var o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+    var f0 = mtof(m);
+    o.type = "triangle";                            // softer than the runs, so it sits under
+    o.frequency.value = f0;
+    lp.type = "lowpass"; lp.Q.value = 4;
+    lp.frequency.setValueAtTime(Math.min(f0 * 5, 7000), t);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(f0 * 1.6, 140), t + 0.16);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.075, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(lp); lp.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.24);
   }
 
   // ── The clock ─────────────────────────────────────────────────────────
@@ -263,12 +305,23 @@
         var b = eighth / 2;
         if (b === 1 || b === 3) snare(stepTime);   // two and four
       }
-      // Anything the fight did since the last slot lands on this one. Runs
-      // are held to the voice count; the kit is cheap and always sounds, so
-      // a ring going out is never swallowed by a busy bar.
+      // Anybody still hanging holds their note under everything else.
+      for (var w in hanging) if (hanging.hasOwnProperty(w)) hangNote(stepTime, hanging[w], hangN);
+      hangN++;
+
+      // Where a thing is allowed to come in. A throw waits for a beat and a
+      // block for a half bar, so a line never starts in the middle of one --
+      // that is the difference between a part and a pile of events. The kit
+      // stays on the eighths, where it can answer off the beat.
+      var onBeat = (step % 2) === 0;
+      var onHalf = (step % 4) === 0;
       var fired = 0;
-      while (pending.length && fired++ < 8) {
-        var e = pending.shift();
+      for (var pi = 0; pi < pending.length && fired < 8; ) {
+        var e = pending[pi];
+        var due = e.kind === "throw" ? onBeat : e.kind === "block" ? onHalf : true;
+        if (!due) { pi++; continue; }
+        pending.splice(pi, 1);
+        fired++;
         if (e.kind === "throw" || e.kind === "block") {
           if (live.length < MAX_VOICES) run(stepTime, e);
           if (e.kind === "block") tom(stepTime, Math.floor(Math.random() * 3));
@@ -340,7 +393,7 @@
       bpm = wantBpm = BASE_BPM;
       STEP = 60 / bpm / 2;
       stepTime = ctx.currentTime + 0.08;
-      pending = []; live = [];
+      pending = []; live = []; hanging = {}; hangN = 0;
       running = true;
       watchForPermission();
       if (timer) clearInterval(timer);
@@ -360,12 +413,18 @@
     // a fighter out winds the tempo up, a new round puts it back.
     mark: function (kind) {
       if (kind === "out") wantBpm = Math.min(MAX_BPM, wantBpm + PER_LOSS);
-      else if (kind === "round") wantBpm = BASE_BPM;
+      else if (kind === "round") { wantBpm = BASE_BPM; hanging = {}; }
     },
 
     // Called by the fight. Held until the next slot on the grid.
     play: function (kind, info) {
       if (!running || !ctx) return;
+      if (kind === "hang") {
+        hanging[info.name] = { name: info.name, team: info.team };
+        return;
+      }
+      if (kind === "unhang") { delete hanging[info.name]; return; }
+      if (kind === "round") { hanging = {}; return; }   // nobody is left hanging
       pending.push({ kind: kind, team: (info && info.team) || 0,
                      aim: info && info.aim != null ? info.aim : 1,
                      name: (info && info.name) || "" });   // whose figure to play

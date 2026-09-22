@@ -278,9 +278,9 @@
 <script src="palette.js?v=e46f3c02"></script>
 <script src="vector.js?v=4ec43c23"></script>
 <script src="learn.js?v=d1de0737"></script>
-<script src="sound.js?v=aae4da6e"></script>
+<script src="sound.js?v=544489dc"></script>
 <script src="poses.js?v=573e2db4"></script>
-<script src="discwars.js?v=955b65b0"></script>
+<script src="discwars.js?v=e1985ab5"></script>
 <script>
 (function () {
   "use strict";
@@ -516,8 +516,10 @@
     soundBtn.hidden = true;
   } else {
     DiscWars.on(function (kind, info) {
-      // "out" and "round" shape the tempo; everything else is a sound.
-      if (kind === "out" || kind === "round") DiscWarsSound.mark(kind);
+      // "out" shapes the tempo, "round" both that and the held notes;
+      // everything else is a sound.
+      if (kind === "out") DiscWarsSound.mark(kind);
+      else if (kind === "round") { DiscWarsSound.mark(kind); DiscWarsSound.play(kind, info); }
       else DiscWarsSound.play(kind, info);
     });
     // The tempo rises with every fighter knocked out, so show where it is.
