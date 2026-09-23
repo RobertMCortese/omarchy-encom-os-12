@@ -6,6 +6,7 @@ above the wallpaper image, never taking keyboard focus, and click-through.
 It loads the Boardroom page from server.py.
 
     wallpaper.py <url> [--max-fps=N] [--always-animate] [--fps]
+                        [--recycle-hours=N]
 
 It animates only while the desktop is actually on show (an empty workspace,
 on mains power, no screensaver running) and otherwise freezes on its last
@@ -213,7 +214,20 @@ def main():
     # Click-through: an empty input region hands every click to what is below.
     win.connect("realize", lambda w: w.input_shape_combine_region(cairo.Region()))
     always = "--always-animate" in sys.argv
-    state = {"paused": None}
+    state = {"paused": None, "loaded": time.monotonic()}
+
+    # The Boardroom was built as a demo that runs for a couple of minutes. As
+    # a wallpaper it runs for days, and it leaks: measured on a live desktop
+    # at about 13MB a minute, 430MB to 817MB over an hour of sitting there
+    # untouched, and 800MB after 44 hours. On a 4GB machine that is enough to
+    # fill swap and have the kernel start picking off other people's work.
+    #
+    # The leak is inside the vendored bundle's own canvases rather than in
+    # anything here, so this does not chase it: it reloads the page every few
+    # hours, which drops the whole heap and starts again from nothing.
+    # --recycle-hours=0 turns it off.
+    recycle = next((float(a.split("=", 1)[1]) for a in sys.argv
+                    if a.startswith("--recycle-hours=")), 3.0)
 
     def freeze(snapshot_result):
         try:
@@ -242,10 +256,20 @@ def main():
                 # while it is still hidden has nothing to start.
                 stack.set_visible_child_name("live")
                 set_paused(False)
+        # Old enough to be recycled: wait for a moment when it is frozen
+        # anyway, so nobody watches it happen, but do not wait for ever --
+        # a desktop that is never idle is exactly the one that needs this.
+        if recycle > 0:
+            age = time.monotonic() - state["loaded"]
+            if age > recycle * 3600 and (paused or age > (recycle + 1) * 3600):
+                state["loaded"] = time.monotonic()
+                view.reload()
         return True
 
-    # Re-apply after every page load (the Boardroom reloads the view it shows).
-    view.connect("load-changed", lambda v, e: state.update(paused=None)
+    # Re-apply after every page load (the Boardroom reloads the view it shows),
+    # and start the recycle clock again from each one.
+    view.connect("load-changed",
+                 lambda v, e: state.update(paused=None, loaded=time.monotonic())
                  if e == WebKit2.LoadEvent.FINISHED else None)
     GLib.timeout_add_seconds(1, tick)
     win.connect("destroy", Gtk.main_quit)
