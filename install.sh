@@ -350,6 +350,14 @@ run omarchy-toggle screensaver-off on
 put "$REPO/boardroom/systemd/encom-boardroom-server.service" "$CFG/systemd/user/encom-boardroom-server.service"
 put "$REPO/boardroom/systemd/encom-wallpaper.service" "$CFG/systemd/user/encom-wallpaper.service"
 run systemctl --user daemon-reload
+# Restart the server whether or not the wallpaper is wanted -- the screensaver
+# sites are served by the same process. Writing server.py is not enough on a
+# re-run: one that is already up keeps serving the copy it read at start, and
+# the wallpaper's Requires= only starts a stopped unit, it does not carry a
+# restart through. An installer that updated the file and bounced only the
+# wallpaper left the old code running with nothing to show for it, which is
+# how a merged fix to server.py sat unapplied here for a day and a half.
+run systemctl --user restart encom-boardroom-server.service
 if [[ $WALLPAPER == yes ]]; then
   say "Wallpaper: the live Boardroom (WebKitGTK on the layer shell)"
   need=()
